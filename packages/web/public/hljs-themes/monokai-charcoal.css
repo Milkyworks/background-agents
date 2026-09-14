@@ -1,0 +1,88 @@
+pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+}
+code.hljs {
+  padding: 3px 5px;
+}
+/*
+
+Monokai Charcoal (high contrast)
+Monokai palette on a pure black charcoal background, with comment and
+punctuation tones lifted to stay legible at high contrast.
+
+background: #000000
+foreground: #f8f8f2
+comment:    #8a8677
+pink:       #f92672
+green:      #a6e22e
+cyan:       #66d9ef
+orange:     #fd971f
+purple:     #ae81ff
+yellow:     #e6db74
+
+*/
+.hljs {
+  color: #f8f8f2;
+  background: #000000;
+}
+.hljs-comment,
+.hljs-quote {
+  color: #8a8677;
+}
+.hljs-tag,
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal,
+.hljs-name,
+.hljs-deletion,
+.hljs-doctag,
+.hljs-formula {
+  color: #f92672;
+}
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-attribute,
+.hljs-meta .hljs-string {
+  color: #e6db74;
+}
+.hljs-number,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-link,
+.hljs-meta {
+  color: #ae81ff;
+}
+.hljs-title,
+.hljs-section,
+.hljs-selector-id,
+.hljs-selector-class {
+  color: #a6e22e;
+}
+.hljs-type,
+.hljs-built_in,
+.hljs-params,
+.hljs-attr,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: #fd971f;
+  font-style: italic;
+}
+.hljs-class .hljs-title,
+.hljs-title.class_,
+.hljs-subst {
+  color: #66d9ef;
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: bold;
+}
+.hljs-link {
+  text-decoration: underline;
+}

@@ -9,11 +9,12 @@ import {
   type SyntaxHighlightThemeDefinition,
 } from "@/hooks/use-syntax-highlight-preferences";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { SunIcon, MoonIcon, MonitorIcon } from "@/components/ui/icons";
+import { SunIcon, MoonIcon, MonitorIcon, ContrastIcon } from "@/components/ui/icons";
 
 const COLOR_SCHEME_OPTIONS: { value: ColorSchemeMode; label: string; icon: typeof SunIcon }[] = [
   { value: "light", label: "Light", icon: SunIcon },
   { value: "dark", label: "Dark", icon: MoonIcon },
+  { value: "high-contrast", label: "High contrast", icon: ContrastIcon },
   { value: "system", label: "System", icon: MonitorIcon },
 ];
 
@@ -65,20 +66,19 @@ export function AppearanceSettings() {
         Customize the appearance of the application.
       </p>
 
-      {/* Code Highlighting section */}
-      <div>
-        <h3 className="text-base font-medium text-foreground mb-1">Code highlighting</h3>
+      {/* Theme section */}
+      <div className="mb-8">
+        <h3 className="text-base font-medium text-foreground mb-1">Theme</h3>
         <p className="text-sm text-muted-foreground mb-4">
-          Customize how code is displayed in sessions.
+          Controls the colors used across the application.
         </p>
 
-        <div className="divide-y divide-border-muted overflow-hidden rounded-xl border border-border-muted bg-card">
-          {/* Color scheme mode toggle */}
+        <div className="overflow-hidden rounded-xl border border-border-muted bg-card">
           <div className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <span className="text-sm text-foreground">Color scheme</span>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Choose light, dark, or match your system theme
+                Choose light, dark, high contrast, or match your system theme
               </p>
             </div>
             <ToggleGroup
@@ -86,7 +86,7 @@ export function AppearanceSettings() {
               variant="outline"
               size="sm"
               value={selectedColorScheme}
-              className="self-start"
+              className="self-start flex-wrap justify-start"
               onValueChange={(value) => {
                 if (!value) return;
                 const nextMode = value as ColorSchemeMode;
@@ -105,17 +105,27 @@ export function AppearanceSettings() {
               })}
             </ToggleGroup>
           </div>
+        </div>
+      </div>
 
+      {/* Code Highlighting section */}
+      <div>
+        <h3 className="text-base font-medium text-foreground mb-1">Code highlighting</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Customize how code is displayed in sessions.
+        </p>
+
+        <div className="divide-y divide-border-muted overflow-hidden rounded-xl border border-border-muted bg-card">
           <ThemeRow
             label="Light theme"
-            description="Used when color scheme is light"
+            description="Used with the light theme"
             value={preferredLightTheme}
             themes={LIGHT_THEMES}
             onChange={(v) => update({ preferredLightTheme: v })}
           />
           <ThemeRow
             label="Dark theme"
-            description="Used when color scheme is dark"
+            description="Used with the dark and high contrast themes"
             value={preferredDarkTheme}
             themes={DARK_THEMES}
             onChange={(v) => update({ preferredDarkTheme: v })}

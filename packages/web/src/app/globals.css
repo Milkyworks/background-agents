@@ -206,6 +206,73 @@ pre code.hljs {
   --overlay: rgba(0, 0, 0, 0.5);
 }
 
+/*
+ * High contrast (Monokai Charcoal inspired).
+ *
+ * A standalone dark theme, not an overlay on `.dark` — next-themes writes a
+ * single class onto <html>, so every token must be defined here. Backgrounds
+ * are solid (not translucent) and borders are opaque so surfaces stay
+ * distinguishable at maximum contrast.
+ */
+.high-contrast {
+  color-scheme: dark;
+
+  --background: #000000;
+  --foreground: #ffffff;
+
+  --card: #101112;
+  --card-foreground: #ffffff;
+
+  --popover: #161819;
+  --popover-foreground: #ffffff;
+
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+
+  --secondary: #26292b;
+
+  /* Accent (Monokai cyan) */
+  --accent: #66d9ef;
+  --accent-foreground: #000000;
+  --accent-muted: rgba(102, 217, 239, 0.22);
+
+  --muted: #1f2223;
+  --muted-foreground: #d4d4d4;
+  --secondary-foreground: #a8aeb0;
+
+  /* Destructive (Monokai pink) */
+  --destructive: #f92672;
+  --destructive-foreground: #000000;
+
+  --border: rgba(255, 255, 255, 0.45);
+  --border-muted: rgba(255, 255, 255, 0.25);
+
+  --input: #000000;
+
+  --ring: #66d9ef;
+
+  /* Success (Monokai green) */
+  --success: #a6e22e;
+  --success-muted: rgba(166, 226, 46, 0.22);
+
+  /* Warning (Monokai orange) */
+  --warning: #fd971f;
+  --warning-foreground: #000000;
+  --warning-muted: rgba(253, 151, 31, 0.22);
+
+  /* Info (Monokai cyan) */
+  --info: #66d9ef;
+  --info-foreground: #000000;
+  --info-muted: rgba(102, 217, 239, 0.22);
+
+  /* Destructive muted (error banners) */
+  --destructive-muted: rgba(249, 38, 114, 0.22);
+  --destructive-border: rgba(249, 38, 114, 0.6);
+
+  /* Overlay */
+  --overlay: rgba(0, 0, 0, 0.8);
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -227,7 +294,7 @@ body {
 
 ::selection {
   background-color: var(--accent);
-  color: white;
+  color: var(--accent-foreground);
 }
 
 *:focus-visible {
