@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import type { ThemePreference } from "@/lib/theme";
 
-export type ColorSchemeMode = "light" | "dark" | "system";
+export type ColorSchemeMode = ThemePreference;
 
 export interface SyntaxHighlightThemeDefinition {
   id: string;
@@ -37,6 +38,12 @@ export const HLJS_THEME_REGISTRY: SyntaxHighlightThemeDefinition[] = [
     label: "GitHub Dark",
     colorScheme: "dark",
     cssPath: "/hljs-themes/github-dark.css",
+  },
+  {
+    id: "monokai-charcoal",
+    label: "Monokai Charcoal (high contrast)",
+    colorScheme: "dark",
+    cssPath: "/hljs-themes/monokai-charcoal.css",
   },
 ];
 

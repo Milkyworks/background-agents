@@ -8,6 +8,7 @@ import {
   LIGHT_THEMES,
   DARK_THEMES,
 } from "@/hooks/use-syntax-highlight-preferences";
+import { colorSchemeOf } from "@/lib/theme";
 
 const LINK_ID = "hljs-theme-link";
 
@@ -22,12 +23,9 @@ export function SyntaxHighlightTheme() {
 
   useEffect(() => {
     // Determine which color scheme is active
-    let activeScheme: "light" | "dark";
-    if (colorSchemeMode === "system") {
-      activeScheme = (resolvedTheme as "light" | "dark") ?? "light";
-    } else {
-      activeScheme = colorSchemeMode;
-    }
+    const activeScheme = colorSchemeOf(
+      colorSchemeMode === "system" ? resolvedTheme : colorSchemeMode
+    );
 
     // Pick the user's preferred theme for that scheme, falling back to first registry entry
     const themeId = activeScheme === "dark" ? preferredDarkTheme : preferredLightTheme;

@@ -3,7 +3,9 @@ import typography from "@tailwindcss/typography";
 import animate from "tailwindcss-animate";
 
 const config: Config = {
-  darkMode: "class",
+  // `dark:` matches every dark-scheme theme class, not just `.dark` — see
+  // APP_THEMES in src/lib/theme.ts.
+  darkMode: ["variant", ["&:where(.dark, .dark *)", "&:where(.high-contrast, .high-contrast *)"]],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",

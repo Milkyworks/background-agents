@@ -5,6 +5,7 @@ import { SWRConfig } from "swr";
 import { Toaster } from "@/components/ui/sonner";
 import { SyntaxHighlightTheme } from "@/components/syntax-highlight-theme";
 import { browserApiFetch, type BrowserApiPath } from "@/lib/browser-api-fetch";
+import { APP_THEMES } from "@/lib/theme";
 
 async function swrFetcher<T>(url: BrowserApiPath): Promise<T> {
   // SWR falls back to this fetcher for every hook that omits its own, including
@@ -16,8 +17,9 @@ async function swrFetcher<T>(url: BrowserApiPath): Promise<T> {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  // enableSystem appends "system" to the theme list on its own.
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem themes={[...APP_THEMES]}>
       <SWRConfig value={{ fetcher: swrFetcher, revalidateOnFocus: true, dedupingInterval: 2000 }}>
         {children}
         <SyntaxHighlightTheme />

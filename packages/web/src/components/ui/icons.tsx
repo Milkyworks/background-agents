@@ -707,6 +707,23 @@ export function MoonIcon({ className }: IconProps) {
   );
 }
 
+export function ContrastIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function MonitorIcon({ className }: IconProps) {
   return (
     <svg

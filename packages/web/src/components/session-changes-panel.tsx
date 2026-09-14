@@ -20,6 +20,7 @@ import { parseDiffErrorBody } from "@/lib/session-diffs";
 import type { DiffSelection, ResolvedDiffSelection } from "@/lib/session-diffs";
 import { browserApiFetch, type BrowserApiPath } from "@/lib/browser-api-fetch";
 import { cn } from "@/lib/utils";
+import { colorSchemeOf } from "@/lib/theme";
 import type { SessionCapabilities } from "@/lib/session-capabilities";
 import { DiffRetryNotice } from "@/components/diff-retry-notice";
 import { FilesChangedSection } from "@/components/sidebar/files-changed-section";
@@ -355,7 +356,7 @@ export function SessionChangesPanel({
               patch={patch}
               diffStyle={effectiveDiffStyle}
               wrap={wrap}
-              themeType={resolvedTheme === "dark" ? "dark" : "light"}
+              themeType={colorSchemeOf(resolvedTheme)}
             />
           ) : (
             <PanelMessage>This patch is empty.</PanelMessage>
