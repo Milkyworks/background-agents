@@ -392,9 +392,27 @@ class OpenCodeServer:
         self.log.info("opencode.start")
 
         # Build OpenCode config from session settings
+        # Both agent blocks are always emitted: the server is long-lived and
+        # its config frozen at launch, so the plan agent must exist before
+        # the first plan prompt. The blanket top-level allow is kept so build
+        # is bit-for-bit unchanged; the plan block's explicit denies are what
+        # make plan mode real (a top-level allow may out-rank the built-in
+        # plan agent's deny rules, findLast-wins).
         opencode_config: dict[str, Any] = {
             "model": f"{self.provider}/{self.model}",
             "permission": {"*": {"*": "allow"}},
+            "agent": {
+                "build": {"permission": {"*": {"*": "allow"}}},
+                "plan": {
+                    "tools": {"write": False, "edit": False, "patch": False, "bash": False},
+                    "permission": {
+                        "edit": "deny",
+                        "write": "deny",
+                        "patch": "deny",
+                        "bash": "deny",
+                    },
+                },
+            },
             "provider": {
                 "anthropic": {
                     "models": {

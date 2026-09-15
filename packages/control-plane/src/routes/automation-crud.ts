@@ -25,6 +25,7 @@ import {
   getValidHarnessOrDefault,
   selectedProviderAuthModes,
 } from "@open-inspect/shared/harnesses";
+import { getValidExecutionModeOrDefault } from "@open-inspect/shared/execution-modes";
 import { getValidModelOrDefault, isValidModel } from "@open-inspect/shared/models";
 import {
   AutomationStore,
@@ -210,6 +211,7 @@ async function handleCreateAutomation(
 
   // Validate harness and model
   const harness = getValidHarnessOrDefault(body.harness);
+  const executionMode = getValidExecutionModeOrDefault(body.executionMode);
   const model = getValidModelOrDefault(body.model);
   const harnessIncompatibility = checkHarnessCompatibility(harness, model);
   if (harnessIncompatibility) return error(harnessIncompatibility.message, 400);
@@ -282,6 +284,7 @@ async function handleCreateAutomation(
     schedule_cron: body.scheduleCron ?? null,
     schedule_tz: body.scheduleTz ?? "UTC",
     harness,
+    execution_mode: executionMode,
     model,
     reasoning_effort: reasoningEffort,
     enabled: 1,
@@ -499,6 +502,8 @@ async function handleUpdateAutomation(
   if (body.scheduleCron !== undefined) updateFields.schedule_cron = body.scheduleCron;
   if (body.scheduleTz !== undefined) updateFields.schedule_tz = body.scheduleTz;
   if (body.harness !== undefined) updateFields.harness = nextHarness;
+  if (body.executionMode !== undefined)
+    updateFields.execution_mode = getValidExecutionModeOrDefault(body.executionMode);
   if (body.model !== undefined) updateFields.model = nextModel;
   if (body.reasoningEffort !== undefined || body.model !== undefined) {
     updateFields.reasoning_effort = resolvedReasoningEffort;

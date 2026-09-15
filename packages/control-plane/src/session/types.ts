@@ -3,6 +3,7 @@
  */
 
 import type { HarnessId } from "@open-inspect/shared/harnesses";
+import type { ExecutionMode } from "@open-inspect/shared/execution-modes";
 import type { ResolvedSessionAttachment } from "@open-inspect/shared/types/session-attachments";
 import type {
   SessionStatus,
@@ -47,6 +48,7 @@ export interface SessionRow {
   current_sha: string | null;
   agent_session_id: string | null; // The agent's own conversation id
   harness: HarnessId; // Agent harness the session runs on; fixed at create
+  execution_mode: string; // 'build' | 'plan'; fixed default at create, overridable per prompt
   model: string; // LLM model to use (e.g., "anthropic/claude-haiku-4-5")
   reasoning_effort: string | null; // Reasoning effort level (e.g., "high", "max")
   status: SessionStatus;
@@ -117,6 +119,7 @@ export interface MessageRow {
   source: MessageSource;
   model: string | null; // LLM model for per-message override
   reasoning_effort: string | null; // Reasoning effort for per-message override
+  execution_mode: string | null; // Per-message execution mode override
   attachments: string | null; // JSON
   callback_context: string | null; // JSON: { channel, threadTs, repoFullName, model }
   client_request_id: string | null;
@@ -211,6 +214,7 @@ interface PromptCommand {
   content: string;
   model?: string; // LLM model for per-message override
   reasoningEffort?: string; // Reasoning effort level
+  executionMode?: ExecutionMode; // Resolved mode; omitted when build for old-bridge compat
   author: {
     userId: string;
     gitIdentity: PromptGitIdentity;

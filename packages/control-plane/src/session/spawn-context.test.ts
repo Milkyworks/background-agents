@@ -9,6 +9,7 @@ describe("spawnContextSchema", () => {
       repoId: null,
       model: "anthropic/claude-sonnet-4-6",
       harness: "opencode",
+      executionMode: "build",
       reasoningEffort: null,
       baseBranch: null,
       sandboxTimeoutMs: 14_400_000,
@@ -37,6 +38,7 @@ describe("spawnContextSchema", () => {
       repoId: null,
       model: "anthropic/claude-sonnet-4-6",
       harness: "opencode",
+      executionMode: "build",
       reasoningEffort: null,
       baseBranch: null,
       promptAuthor: {
@@ -63,6 +65,7 @@ describe("spawnContextSchema", () => {
         repoId: null,
         model: "anthropic/claude-sonnet-4-6",
         harness: "opencode",
+        executionMode: "build",
         reasoningEffort: null,
         baseBranch: null,
         sandboxTimeoutMs,

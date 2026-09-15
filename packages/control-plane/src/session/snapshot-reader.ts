@@ -1,4 +1,5 @@
 import { getValidHarnessOrDefault } from "@open-inspect/shared/harnesses";
+import { getValidExecutionModeOrDefault } from "@open-inspect/shared/execution-modes";
 import {
   sessionSnapshotSchema,
   type SessionSnapshotState,
@@ -99,6 +100,7 @@ export class SessionSnapshotReader {
       messageCount: this.deps.messageRepository.getMessageCount(),
       createdAt: session.created_at,
       harness: getValidHarnessOrDefault(session.harness),
+      executionMode: getValidExecutionModeOrDefault(session.execution_mode),
       model: session.model ?? DEFAULT_MODEL,
       reasoningEffort: session.reasoning_effort ?? undefined,
       isProcessing: this.getIsProcessing(),

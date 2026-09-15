@@ -58,6 +58,7 @@ function createSession(overrides: Partial<SessionRow> = {}): SessionRow {
     current_sha: null,
     agent_session_id: null,
     harness: "opencode",
+    execution_mode: "build",
     model: "anthropic/claude-haiku-4-5",
     reasoning_effort: null,
     status: "active",
@@ -86,6 +87,7 @@ function createMessage(overrides: Partial<MessageRow> = {}): MessageRow {
     source: "web",
     model: null,
     reasoning_effort: null,
+    execution_mode: null,
     attachments: null,
     callback_context: null,
     client_request_id: null,
@@ -140,6 +142,7 @@ function buildQueue() {
   // dispatch time — the thunk exists because settings can be persisted after
   // the queue is constructed.
   let executionTimeoutMs = EXECUTION_TIMEOUT_MS;
+  let sandboxRuntimeVersion: string | null = null;
   let awaitingStop: { id: string; deadline: number } | null = null;
   const log = {
     debug: vi.fn(),
@@ -289,7 +292,8 @@ function buildQueue() {
     "github",
     alarmScheduler,
     executionStop,
-    () => executionTimeoutMs
+    () => executionTimeoutMs,
+    () => sandboxRuntimeVersion
   );
 
   return {
@@ -313,6 +317,9 @@ function buildQueue() {
     log,
     setExecutionTimeoutMs(value: number) {
       executionTimeoutMs = value;
+    },
+    setSandboxRuntimeVersion(value: string | null) {
+      sandboxRuntimeVersion = value;
     },
   };
 }
@@ -1439,6 +1446,67 @@ describe("SessionMessageQueue", () => {
 
     expect(h.callbackService.notifyStarted).not.toHaveBeenCalled();
     expect(h.backgroundTasks.submissions).toHaveLength(0);
+  });
+
+  describe("execution modes", () => {
+    it("sends a per-message plan override over a build session default", async () => {
+      const h = buildQueue();
+      h.setSandboxRuntimeVersion("v68-execution-mode");
+      h.repository.getSession.mockReturnValue(createSession({ execution_mode: "build" }));
+      h.repository.getNextPendingMessage.mockReturnValue(createMessage({ execution_mode: "plan" }));
+      h.wsManager.getSandboxSocket.mockReturnValue({ readyState: 1 } as WebSocket);
+
+      await h.queue.processMessageQueue();
+
+      const command = h.wsManager.send.mock.calls[0][1] as { executionMode?: string };
+      expect(command).toMatchObject({ type: "prompt", executionMode: "plan" });
+    });
+
+    it("omits executionMode from the command for a resolved build", async () => {
+      const h = buildQueue();
+      h.setSandboxRuntimeVersion("v68-execution-mode");
+      h.repository.getSession.mockReturnValue(createSession({ execution_mode: "build" }));
+      h.repository.getNextPendingMessage.mockReturnValue(createMessage({ execution_mode: null }));
+      h.wsManager.getSandboxSocket.mockReturnValue({ readyState: 1 } as WebSocket);
+
+      await h.queue.processMessageQueue();
+
+      const command = h.wsManager.send.mock.calls[0][1] as Record<string, unknown>;
+      expect(command.type).toBe("prompt");
+      expect(command).not.toHaveProperty("executionMode");
+    });
+
+    it("rejects a plan prompt against an under-floor runtime instead of downgrading", async () => {
+      const h = buildQueue();
+      h.setSandboxRuntimeVersion("v62-legacy");
+      h.repository.getSession.mockReturnValue(createSession({ execution_mode: "build" }));
+
+      await h.queue.handlePromptMessage({} as WebSocket, createClientInfo(), {
+        content: "plan this",
+        executionMode: "plan",
+      });
+
+      expect(h.repository.createMessageWithAttachments).not.toHaveBeenCalled();
+      expect(h.wsManager.send).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ code: "EXECUTION_MODE_NOT_SUPPORTED" })
+      );
+    });
+
+    it("fails a plan dispatch when the sandbox runtime predates the floor", async () => {
+      const h = buildQueue();
+      h.setSandboxRuntimeVersion("v62-legacy");
+      h.repository.getSession.mockReturnValue(createSession({ execution_mode: "plan" }));
+      h.repository.getNextPendingMessage
+        .mockReturnValueOnce(createMessage({ execution_mode: null }))
+        .mockReturnValue(null);
+      h.wsManager.getSandboxSocket.mockReturnValue({ readyState: 1 } as WebSocket);
+
+      await h.queue.processMessageQueue();
+
+      expect(h.repository.startMessageProcessing).not.toHaveBeenCalled();
+      expect(h.wsManager.send).not.toHaveBeenCalled();
+    });
   });
 
   describe("execution timeout scheduling", () => {

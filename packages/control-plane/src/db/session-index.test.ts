@@ -10,6 +10,7 @@ type SessionRow = {
   repo_owner: string | null;
   repo_name: string | null;
   harness: HarnessId;
+  execution_mode: "build" | "plan";
   model: string;
   reasoning_effort: string | null;
   base_branch: string | null;
@@ -197,6 +198,7 @@ class FakeD1Database {
         repoOwner,
         repoName,
         harness,
+        executionMode,
         model,
         reasoningEffort,
         baseBranch,
@@ -220,6 +222,7 @@ class FakeD1Database {
         string | null,
         string | null,
         HarnessId,
+        "build" | "plan",
         string,
         string | null,
         string | null,
@@ -250,6 +253,7 @@ class FakeD1Database {
           repo_owner: repoOwner,
           repo_name: repoName,
           harness,
+          execution_mode: executionMode,
           model,
           reasoning_effort: reasoningEffort,
           base_branch: baseBranch,
@@ -498,6 +502,7 @@ describe("SessionIndexStore", () => {
         ...session,
         // Defaults applied for missing optional fields
         harness: "opencode",
+        executionMode: "build",
         parentSessionId: null,
         spawnSource: "user",
         spawnDepth: 0,

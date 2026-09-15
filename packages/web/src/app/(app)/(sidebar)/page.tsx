@@ -30,6 +30,17 @@ import {
   reconcileProviderSelectionsForHarness,
   type HarnessId,
 } from "@open-inspect/shared/harnesses";
+import {
+  DEFAULT_EXECUTION_MODE,
+  getValidExecutionModeOrDefault,
+  type ExecutionMode,
+} from "@open-inspect/shared/execution-modes";
+import {
+  readModeModelMap,
+  resolveModeModelSwitch,
+  writeModeModelPreference,
+  clearModeModelPreference,
+} from "@/lib/mode-model-map";
 import { resolveHarnessModelSelection } from "@/lib/session-harness";
 import { useEnabledModels } from "@/hooks/use-enabled-models";
 import { useAttachmentDropZone } from "@/hooks/use-attachment-drop-zone";
@@ -74,6 +85,7 @@ import {
 
 const LAST_SELECTED_MODEL_STORAGE_KEY = "open-inspect-last-selected-model";
 const LAST_SELECTED_HARNESS_STORAGE_KEY = "open-inspect-last-selected-harness";
+const LAST_SELECTED_EXECUTION_MODE_STORAGE_KEY = "open-inspect-last-selected-execution-mode";
 const LAST_SELECTED_REASONING_EFFORT_STORAGE_KEY = "open-inspect-last-selected-reasoning-effort";
 const LEGACY_PROVIDER_SELECTIONS_STORAGE_KEY = "open-inspect-last-provider-selections";
 const LAST_PROVIDER_SELECTIONS_STORAGE_KEY = "open-inspect-last-provider-selections:v1";
@@ -109,6 +121,7 @@ export default function Home() {
   });
   const [modelPreferenceDraft, setModelPreferenceDraft] = useState<ModelPreference | null>(null);
   const [harness, setHarness] = useState<HarnessId>(DEFAULT_HARNESS);
+  const [executionMode, setExecutionMode] = useState<ExecutionMode>(DEFAULT_EXECUTION_MODE);
   const [prompt, setPrompt] = useState("");
   const [skillSelection, setSkillSelection] = useState<SessionSkillSelection>({ mode: "all" });
   const [providerSelections, setProviderSelections] = useState<ModelProviderSelections>({});
@@ -161,6 +174,9 @@ export default function Home() {
       reasoningEffort: storedReasoningEffort ?? undefined,
     });
     setHarness(getValidHarnessOrDefault(localStorage.getItem(LAST_SELECTED_HARNESS_STORAGE_KEY)));
+    setExecutionMode(
+      getValidExecutionModeOrDefault(localStorage.getItem(LAST_SELECTED_EXECUTION_MODE_STORAGE_KEY))
+    );
     if (storedProviderSelections) setProviderSelections(storedProviderSelections);
     setProviderSelectionsHydrated(true);
     hasHydratedModelPreferencesRef.current = true;
@@ -230,6 +246,7 @@ export default function Home() {
       ? {
           ...targetRequestFields,
           harness,
+          executionMode,
           model: selectedModel,
           reasoningEffort,
           skillSelection,
@@ -272,9 +289,59 @@ export default function Home() {
     [saveModelPreferenceDraft, selectedModel]
   );
 
-  const handleHarnessChange = useCallback((nextHarness: HarnessId) => {
-    setHarness(nextHarness);
-    localStorage.setItem(LAST_SELECTED_HARNESS_STORAGE_KEY, nextHarness);
+  const handleHarnessChange = useCallback(
+    (nextHarness: HarnessId) => {
+      setHarness(nextHarness);
+      localStorage.setItem(LAST_SELECTED_HARNESS_STORAGE_KEY, nextHarness);
+      // A harness switch can strand the mode's remembered model; re-resolve
+      // so a Claude session with an OpenAI plan model falls back cleanly.
+      const switched = resolveModeModelSwitch({
+        mode: executionMode,
+        harness: nextHarness,
+        map: readModeModelMap(),
+        enabledModels,
+        enabledModelOptions,
+      });
+      if (switched) {
+        setModelPreferenceDraft(switched);
+        localStorage.setItem(LAST_SELECTED_MODEL_STORAGE_KEY, switched.model);
+      }
+    },
+    [enabledModelOptions, enabledModels, executionMode]
+  );
+
+  const handleExecutionModeChange = useCallback(
+    (mode: ExecutionMode) => {
+      setExecutionMode(mode);
+      localStorage.setItem(LAST_SELECTED_EXECUTION_MODE_STORAGE_KEY, mode);
+      const switched = resolveModeModelSwitch({
+        mode,
+        harness,
+        map: readModeModelMap(),
+        enabledModels,
+        enabledModelOptions,
+      });
+      if (switched) {
+        setModelPreferenceDraft(switched);
+        localStorage.setItem(LAST_SELECTED_MODEL_STORAGE_KEY, switched.model);
+      }
+    },
+    [enabledModelOptions, enabledModels, harness]
+  );
+
+  const handlePinModeModel = useCallback(
+    (mode: ExecutionMode) => {
+      writeModeModelPreference(mode, { model: selectedModel, reasoningEffort });
+    },
+    [reasoningEffort, selectedModel]
+  );
+
+  const handleClearModeModel = useCallback((mode: ExecutionMode) => {
+    clearModeModelPreference(mode);
+  }, []);
+
+  const hasPinnedModeModel = useCallback((mode: ExecutionMode) => {
+    return readModeModelMap()[mode] !== undefined;
   }, []);
 
   const handleProviderSelectionChange = useCallback(
@@ -366,6 +433,7 @@ export default function Home() {
           content: prompt.trim() || DEFAULT_ATTACHMENT_ONLY_MESSAGE,
           model: selectedModel,
           reasoningEffort,
+          executionMode,
           ...(attachments && attachments.length > 0 ? { attachments } : {}),
         }),
       });
@@ -400,6 +468,11 @@ export default function Home() {
       setReasoningEffort={handleReasoningEffortChange}
       harness={harness}
       setHarness={handleHarnessChange}
+      executionMode={executionMode}
+      setExecutionMode={handleExecutionModeChange}
+      onPinModeModel={handlePinModeModel}
+      onClearModeModel={handleClearModeModel}
+      hasPinnedModeModel={hasPinnedModeModel}
       prompt={prompt}
       handlePromptChange={handlePromptChange}
       attachments={{
@@ -438,6 +511,11 @@ function HomeContent({
   setReasoningEffort,
   harness,
   setHarness,
+  executionMode,
+  setExecutionMode,
+  onPinModeModel,
+  onClearModeModel,
+  hasPinnedModeModel,
   prompt,
   handlePromptChange,
   attachments,
@@ -466,6 +544,11 @@ function HomeContent({
   setReasoningEffort: (value: ReasoningEffort | undefined) => void;
   harness: HarnessId;
   setHarness: (value: HarnessId) => void;
+  executionMode: ExecutionMode;
+  setExecutionMode: (value: ExecutionMode) => void;
+  onPinModeModel: (mode: ExecutionMode) => void;
+  onClearModeModel: (mode: ExecutionMode) => void;
+  hasPinnedModeModel: (mode: ExecutionMode) => boolean;
   prompt: string;
   handlePromptChange: (value: string) => void;
   attachments: {
@@ -644,6 +727,11 @@ function HomeContent({
                       onReasoningEffortChange={setReasoningEffort}
                       harness={harness}
                       onHarnessChange={setHarness}
+                      executionMode={executionMode}
+                      onExecutionModeChange={setExecutionMode}
+                      onPinModeModel={onPinModeModel}
+                      onClearModeModel={onClearModeModel}
+                      hasPinnedModeModel={hasPinnedModeModel}
                       disabled={creating}
                     />
 

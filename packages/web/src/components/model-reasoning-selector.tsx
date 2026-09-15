@@ -13,6 +13,12 @@ import {
   isValidHarness,
   type HarnessId,
 } from "@open-inspect/shared/harnesses";
+import {
+  EXECUTION_MODE_CATALOG,
+  EXECUTION_MODE_IDS,
+  isValidExecutionMode,
+  type ExecutionMode,
+} from "@open-inspect/shared/execution-modes";
 import { formatModelNameLower } from "@/lib/format";
 import { BackIcon, ChevronDownIcon } from "@/components/ui/icons";
 import { HarnessIcon, HarnessName } from "@/components/harness-icon";
@@ -41,6 +47,16 @@ type ModelReasoningSelectorProps = {
   harness?: HarnessId;
   /** Adds an Agent row to the menu; leave unset once the session's harness is fixed. */
   onHarnessChange?: (harness: HarnessId) => void;
+  /** Build (write) or plan (read-only). */
+  executionMode?: ExecutionMode;
+  /** Adds a Mode row to the menu; available on both the new-session and session pages. */
+  onExecutionModeChange?: (mode: ExecutionMode) => void;
+  /** Pins the current model as the remembered model for a mode (opt-in auto-switch). */
+  onPinModeModel?: (mode: ExecutionMode) => void;
+  /** Clears the remembered model for a mode. */
+  onClearModeModel?: (mode: ExecutionMode) => void;
+  /** Whether a mode has a remembered model pinned. */
+  hasPinnedModeModel?: (mode: ExecutionMode) => boolean;
   disabled?: boolean;
 };
 
@@ -58,18 +74,28 @@ export function ModelReasoningSelector({
   onReasoningEffortChange,
   harness,
   onHarnessChange,
+  executionMode,
+  onExecutionModeChange,
+  onPinModeModel,
+  onClearModeModel,
+  hasPinnedModeModel,
   disabled = false,
 }: ModelReasoningSelectorProps) {
   const isMobile = useIsMobile();
-  const [mobileView, setMobileView] = useState<"main" | "agent" | "model" | "effort">("main");
+  const [mobileView, setMobileView] = useState<"main" | "agent" | "mode" | "model" | "effort">(
+    "main"
+  );
   const reasoningConfig = getReasoningConfig(selectedModel);
   const selectedEffort = reasoningEffort ?? reasoningConfig?.default;
   const effortLabel = selectedEffort ? formatEffort(selectedEffort) : "Default";
   const modelLabel = formatModelNameLower(selectedModel);
   const harnessLabel = harness ? getHarnessLabel(harness) : null;
   const canChangeHarness = harness !== undefined && onHarnessChange !== undefined;
+  const canChangeExecutionMode = executionMode !== undefined && onExecutionModeChange !== undefined;
+  const modeLabel = executionMode ? EXECUTION_MODE_CATALOG[executionMode].label : null;
   const triggerLabel = [
     harnessLabel ? `Agent, model and effort: ${harnessLabel}` : "Model and effort:",
+    ...(modeLabel ? [`Mode: ${modeLabel}`] : []),
     modelLabel,
     ...(reasoningConfig ? [effortLabel] : []),
   ].join(", ");
@@ -89,6 +115,7 @@ export function ModelReasoningSelector({
               <span className="hidden shrink-0 sm:inline">{harnessLabel}:</span>
             </>
           )}
+          {modeLabel && <span className="shrink-0 text-secondary-foreground">{modeLabel}</span>}
           <span className="max-w-[9rem] truncate sm:max-w-none">{modelLabel}</span>
           {reasoningConfig && (
             <span className="shrink-0 text-secondary-foreground">{effortLabel}</span>
@@ -122,6 +149,19 @@ export function ModelReasoningSelector({
                   <span>Agent</span>
                   <span className="ml-auto max-w-32 truncate text-muted-foreground">
                     {harnessLabel}
+                  </span>
+                </DropdownMenuItem>
+              )}
+              {canChangeExecutionMode && (
+                <DropdownMenuItem
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    setMobileView("mode");
+                  }}
+                >
+                  <span>Mode</span>
+                  <span className="ml-auto max-w-32 truncate text-muted-foreground">
+                    {modeLabel}
                   </span>
                 </DropdownMenuItem>
               )}
@@ -162,6 +202,15 @@ export function ModelReasoningSelector({
               <DropdownMenuSeparator />
               {mobileView === "agent" && harness && onHarnessChange ? (
                 <HarnessOptions value={harness} onChange={onHarnessChange} />
+              ) : mobileView === "mode" && executionMode && onExecutionModeChange ? (
+                <ModeOptions
+                  value={executionMode}
+                  onChange={onExecutionModeChange}
+                  selectedModelName={modelLabel}
+                  onPinModeModel={onPinModeModel}
+                  onClearModeModel={onClearModeModel}
+                  hasPinnedModeModel={hasPinnedModeModel}
+                />
               ) : mobileView === "model" ? (
                 <ModelOptions items={items} value={selectedModel} onChange={onModelChange} />
               ) : (
@@ -187,6 +236,26 @@ export function ModelReasoningSelector({
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent align="end" collisionPadding={8} className="w-48">
                   <HarnessOptions value={harness} onChange={onHarnessChange} />
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
+            {canChangeExecutionMode && executionMode && onExecutionModeChange && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <span>Mode</span>
+                  <span className="ml-auto max-w-32 truncate text-muted-foreground">
+                    {modeLabel}
+                  </span>
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent align="end" collisionPadding={8} className="w-56">
+                  <ModeOptions
+                    value={executionMode}
+                    onChange={onExecutionModeChange}
+                    selectedModelName={modelLabel}
+                    onPinModeModel={onPinModeModel}
+                    onClearModeModel={onClearModeModel}
+                    hasPinnedModeModel={hasPinnedModeModel}
+                  />
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
             )}
@@ -247,6 +316,63 @@ function HarnessOptions({
         </DropdownMenuRadioItem>
       ))}
     </DropdownMenuRadioGroup>
+  );
+}
+
+function ModeOptions({
+  value,
+  onChange,
+  selectedModelName,
+  onPinModeModel,
+  onClearModeModel,
+  hasPinnedModeModel,
+}: {
+  value: ExecutionMode;
+  onChange: (mode: ExecutionMode) => void;
+  selectedModelName: string;
+  onPinModeModel?: (mode: ExecutionMode) => void;
+  onClearModeModel?: (mode: ExecutionMode) => void;
+  hasPinnedModeModel?: (mode: ExecutionMode) => boolean;
+}) {
+  return (
+    <>
+      <DropdownMenuRadioGroup
+        value={value}
+        onValueChange={(next) => {
+          if (isValidExecutionMode(next)) onChange(next);
+        }}
+      >
+        {EXECUTION_MODE_IDS.map((candidate) => (
+          <DropdownMenuRadioItem key={candidate} value={candidate}>
+            <span className="min-w-0">
+              <span className="block truncate">{EXECUTION_MODE_CATALOG[candidate].label}</span>
+              <span className="block truncate text-xs text-secondary-foreground">
+                {EXECUTION_MODE_CATALOG[candidate].description}
+              </span>
+            </span>
+          </DropdownMenuRadioItem>
+        ))}
+      </DropdownMenuRadioGroup>
+      {onPinModeModel && (
+        <>
+          <DropdownMenuSeparator />
+          {EXECUTION_MODE_IDS.map((candidate) => (
+            <Fragment key={candidate}>
+              <DropdownMenuItem onSelect={() => onPinModeModel(candidate)}>
+                <span className="truncate">
+                  Use {selectedModelName} for {EXECUTION_MODE_CATALOG[candidate].label}
+                </span>
+              </DropdownMenuItem>
+              {hasPinnedModeModel?.(candidate) && onClearModeModel && (
+                <DropdownMenuItem onSelect={() => onClearModeModel(candidate)}>
+                  <span>Clear {EXECUTION_MODE_CATALOG[candidate].label} model</span>
+                </DropdownMenuItem>
+              )}
+            </Fragment>
+          ))}
+        </>
+      )}
+    </>
   );
 }
 

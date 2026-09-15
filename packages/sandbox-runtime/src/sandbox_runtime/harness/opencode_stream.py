@@ -174,6 +174,7 @@ class OpenCodePromptStream:
         model: str | None = None,
         reasoning_effort: str | None = None,
         attachments: list[HydratedSessionAttachment] | None = None,
+        execution_mode: str = "build",
     ) -> AsyncIterator[dict[str, Any]]:
         """Stream response from OpenCode using Server-Sent Events.
 
@@ -184,7 +185,12 @@ class OpenCodePromptStream:
         """
         opencode_message_id = OpenCodeIdentifier.ascending("message")
         request_body = self._build_prompt_request_body(
-            content, model, opencode_message_id, reasoning_effort, attachments
+            content,
+            model,
+            opencode_message_id,
+            reasoning_effort,
+            attachments,
+            execution_mode,
         )
 
         state = _PromptState(
@@ -814,6 +820,7 @@ class OpenCodePromptStream:
         opencode_message_id: str | None = None,
         reasoning_effort: str | None = None,
         attachments: list[HydratedSessionAttachment] | None = None,
+        execution_mode: str = "build",
     ) -> dict[str, Any]:
         """Build request body for OpenCode prompt requests.
 
@@ -826,12 +833,17 @@ class OpenCodePromptStream:
             reasoning_effort: Optional reasoning effort level (e.g., "high", "max")
             attachments: Optional list of attachment dicts (type/name/url/content/mimeType)
                          to forward as OpenCode file parts.
+            execution_mode: "plan" selects the write-denied plan agent; anything
+                         else selects the build agent.
         """
         parts: list[dict[str, Any]] = [{"type": "text", "text": content}]
         parts.extend(
             dict(part) for part in self._attachment_processor.build_file_parts(attachments)
         )
-        request_body: dict[str, Any] = {"parts": parts}
+        request_body: dict[str, Any] = {
+            "parts": parts,
+            "agent": "plan" if execution_mode == "plan" else "build",
+        }
 
         if opencode_message_id:
             request_body["messageID"] = opencode_message_id

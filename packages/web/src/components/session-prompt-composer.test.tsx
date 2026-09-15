@@ -69,6 +69,7 @@ function ComposerHarness({
   blockedReason,
   canManageLifecycle = true,
   harness = "opencode",
+  executionMode = "build",
 }: {
   initialValue?: string;
   isProcessing?: boolean;
@@ -80,6 +81,7 @@ function ComposerHarness({
   blockedReason?: string;
   canManageLifecycle?: boolean;
   harness?: "opencode" | "claude";
+  executionMode?: "build" | "plan";
 }) {
   const [value, setValue] = useState(initialValue);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -127,6 +129,10 @@ function ComposerHarness({
         items: [],
         onModelChange: vi.fn(),
         onReasoningEffortChange: vi.fn(),
+      }}
+      mode={{
+        executionMode,
+        onExecutionModeChange: vi.fn(),
       }}
     />
   );
@@ -265,5 +271,14 @@ describe("SessionPromptComposer", () => {
     const trigger = screen.getByRole("button", { name: "Agent, model and effort: claude" });
     expect(trigger).toHaveAttribute("data-agent-editable", "false");
     expect(screen.queryByRole("button", { name: /switch agent/i })).not.toBeInTheDocument();
+  });
+
+  it("shows the live execution mode instead of a static agent label", () => {
+    const { rerender } = render(<ComposerHarness executionMode="build" />);
+    expect(screen.getByText("build agent")).toBeInTheDocument();
+
+    rerender(<ComposerHarness executionMode="plan" />);
+    expect(screen.getByText("plan agent")).toBeInTheDocument();
+    expect(screen.queryByText("build agent")).not.toBeInTheDocument();
   });
 });

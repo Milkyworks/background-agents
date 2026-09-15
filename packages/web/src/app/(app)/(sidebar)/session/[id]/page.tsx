@@ -37,6 +37,16 @@ import {
 } from "@open-inspect/shared/models";
 import type { ModelPreference } from "@/lib/model-selection";
 import type { HarnessId } from "@open-inspect/shared/harnesses";
+import {
+  getValidExecutionModeOrDefault,
+  type ExecutionMode,
+} from "@open-inspect/shared/execution-modes";
+import {
+  clearModeModelPreference,
+  readModeModelMap,
+  resolveModeModelSwitch,
+  writeModeModelPreference,
+} from "@/lib/mode-model-map";
 import { resolveHarnessModelSelection } from "@/lib/session-harness";
 import { useEnabledModels } from "@/hooks/use-enabled-models";
 import { useSessionDiffs } from "@/hooks/use-session-diffs";
@@ -130,10 +140,15 @@ export default function SessionPage() {
     reasoningEffort,
     setReasoningEffort,
     handleModelChange,
+    executionMode,
+    handleExecutionModeChange,
+    handlePinModeModel,
+    handleClearModeModel,
+    hasPinnedModeModel,
     enabledModelOptions,
     loadingEnabledModels,
     modelAvailability,
-  } = useModelSelection(sessionState, sessionHarness);
+  } = useModelAndModeSelection(sessionState, sessionHarness);
   const {
     prompt,
     sessionAttachments,
@@ -151,6 +166,7 @@ export default function SessionPage() {
     sendTyping,
     selectedModel,
     reasoningEffort,
+    executionMode,
     loadingEnabledModels,
     sessionState?.status ?? DEFAULT_SESSION_STATUS,
     ready && capabilities.collaborate && !sessionState?.budgetExhausted,
@@ -398,6 +414,13 @@ export default function SessionPage() {
             onModelChange: handleModelChange,
             onReasoningEffortChange: setReasoningEffort,
           }}
+          mode={{
+            executionMode,
+            onExecutionModeChange: handleExecutionModeChange,
+            onPinModeModel: handlePinModeModel,
+            onClearModeModel: handleClearModeModel,
+            hasPinnedModeModel,
+          }}
         />
       )}
     </div>
@@ -618,17 +641,23 @@ function useSessionListActions(sessionId: string) {
 }
 
 /**
- * Model and reasoning-effort selection derived from session state until the
- * user takes ownership of an explicit draft. Only models the session's harness
- * can run are offered, and `modelAvailability` says when none can be sent.
+ * Model, effort, and execution-mode selection derived from session state until
+ * the user takes ownership of an explicit draft. Only models the session's
+ * harness can run are offered, and `modelAvailability` says when none can be
+ * sent. Switching modes applies the remembered per-mode model (when the
+ * harness can run it and it is still enabled) so the composer shows the new
+ * model before anything is sent.
  */
-function useModelSelection(sessionState: SessionState, harness: HarnessId) {
+function useModelAndModeSelection(sessionState: SessionState, harness: HarnessId) {
   const [modelPreferenceDraft, setModelPreferenceDraft] = useState<ModelPreference | null>(null);
+  const [executionModeDraft, setExecutionModeDraft] = useState<ExecutionMode | null>(null);
 
   const { enabledModels, enabledModelOptions, loading: loadingEnabledModels } = useEnabledModels();
   const sessionModel = sessionState?.model ?? DEFAULT_MODEL;
   const sessionReasoningEffort =
     sessionState?.reasoningEffort ?? getDefaultReasoningEffort(sessionModel);
+  const executionMode =
+    executionModeDraft ?? getValidExecutionModeOrDefault(sessionState?.executionMode);
   const {
     model: selectedModel,
     reasoningEffort,
@@ -667,11 +696,46 @@ function useModelSelection(sessionState: SessionState, harness: HarnessId) {
     [selectedModel]
   );
 
+  const handleExecutionModeChange = useCallback(
+    (mode: ExecutionMode) => {
+      setExecutionModeDraft(mode);
+      const switched = resolveModeModelSwitch({
+        mode,
+        harness,
+        map: readModeModelMap(),
+        enabledModels,
+        enabledModelOptions,
+      });
+      if (switched) setModelPreferenceDraft(switched);
+    },
+    [enabledModelOptions, enabledModels, harness]
+  );
+
+  const handlePinModeModel = useCallback(
+    (mode: ExecutionMode) => {
+      writeModeModelPreference(mode, { model: selectedModel, reasoningEffort });
+    },
+    [reasoningEffort, selectedModel]
+  );
+
+  const handleClearModeModel = useCallback((mode: ExecutionMode) => {
+    clearModeModelPreference(mode);
+  }, []);
+
+  const hasPinnedModeModel = useCallback((mode: ExecutionMode) => {
+    return readModeModelMap()[mode] !== undefined;
+  }, []);
+
   return {
     selectedModel,
     reasoningEffort,
     setReasoningEffort,
     handleModelChange,
+    executionMode,
+    handleExecutionModeChange,
+    handlePinModeModel,
+    handleClearModeModel,
+    hasPinnedModeModel,
     enabledModelOptions: options,
     loadingEnabledModels,
     modelAvailability,

@@ -2,13 +2,21 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from sandbox_runtime.bridge import AgentBridge
-from sandbox_runtime.harness import HarnessId, HarnessStartError, TurnOutcome, parse_harness_id
+from sandbox_runtime.harness import (
+    HarnessId,
+    HarnessPrompt,
+    HarnessStartError,
+    PromptLimits,
+    TurnOutcome,
+    parse_harness_id,
+)
+from sandbox_runtime.harness.opencode import OpencodeHarness
 from tests.conftest import ScriptedHarness
 
 if TYPE_CHECKING:
@@ -161,6 +169,120 @@ class TestSessionIdentity:
         await task
 
         assert bridge.session_id_file.read_text() == "rotated-id"
+
+
+class TestExecutionMode:
+    """The wire ``executionMode`` reaches the harness normalized (plan or build)."""
+
+    async def _prompt_mode(self, cmd: dict) -> tuple[str, MagicMock]:
+        harness = ScriptedHarness(session_id="oc-session-123")
+        bridge = _bridge(harness)
+        bridge._configure_git_identity = AsyncMock()  # type: ignore[method-assign]
+        bridge._send_event = AsyncMock()  # type: ignore[method-assign]
+        await bridge._handle_prompt(
+            {
+                "messageId": "m1",
+                "content": "hi",
+                "author": {"gitIdentity": {"mode": "agent-only"}},
+                **cmd,
+            }
+        )
+        assert len(harness.prompts) == 1
+        return harness.prompts[0].execution_mode, bridge.log
+
+    @pytest.mark.asyncio
+    async def test_absent_execution_mode_means_build(self) -> None:
+        mode, log = await self._prompt_mode({})
+        assert mode == "build"
+        log.info.assert_any_call(
+            "prompt.start",
+            message_id="m1",
+            model=None,
+            reasoning_effort=None,
+            execution_mode="build",
+        )
+
+    @pytest.mark.asyncio
+    async def test_plan_propagates(self) -> None:
+        mode, log = await self._prompt_mode({"executionMode": "plan"})
+        assert mode == "plan"
+        log.info.assert_any_call(
+            "prompt.start",
+            message_id="m1",
+            model=None,
+            reasoning_effort=None,
+            execution_mode="plan",
+        )
+
+    @pytest.mark.asyncio
+    async def test_unknown_execution_mode_falls_back_to_build(self) -> None:
+        for value in ("BUILD", "Plan", "turbo", "", None, 42):
+            mode, _ = await self._prompt_mode({"executionMode": value})
+            assert mode == "build", value
+
+
+def _opencode_harness(*, plan_available: bool) -> tuple[OpencodeHarness, MagicMock]:
+    client = MagicMock()
+    client.plan_agent_available = AsyncMock(return_value=plan_available)
+    harness = OpencodeHarness(
+        client=client,
+        attachment_processor=MagicMock(),
+        log=MagicMock(),
+        limits=PromptLimits(
+            inactivity_timeout_seconds=5.0,
+            prompt_max_duration_seconds=30.0,
+            prompt_cleanup_timeout_seconds=1.0,
+        ),
+    )
+    harness.session_id = "oc-session-123"
+    return harness, client
+
+
+async def _finished_stream() -> Any:
+    yield {"type": "step_finish", "messageId": "m1", "messageCostUsd": 0.0}
+
+
+class TestOpencodePlanGuard:
+    """A plan prompt without a write-denied plan agent fails loudly, never as build."""
+
+    @pytest.mark.asyncio
+    async def test_plan_without_plan_agent_raises(self) -> None:
+        harness, client = _opencode_harness(plan_available=False)
+
+        async def emit(_event: dict) -> None:
+            pass
+
+        with pytest.raises(RuntimeError, match="plan agent"):
+            await harness.run_prompt(
+                HarnessPrompt(message_id="m1", text="hi", execution_mode="plan"), emit
+            )
+        client.plan_agent_available.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_plan_with_plan_agent_runs(self) -> None:
+        harness, client = _opencode_harness(plan_available=True)
+        harness.stream_events = lambda _prompt: _finished_stream()  # type: ignore[method-assign]
+
+        async def emit(_event: dict) -> None:
+            pass
+
+        outcome = await harness.run_prompt(
+            HarnessPrompt(message_id="m1", text="hi", execution_mode="plan"), emit
+        )
+        assert outcome.success is True
+        client.plan_agent_available.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_build_never_probes_the_agent_list(self) -> None:
+        harness, client = _opencode_harness(plan_available=False)
+        harness.stream_events = lambda _prompt: _finished_stream()  # type: ignore[method-assign]
+
+        async def emit(_event: dict) -> None:
+            pass
+
+        outcome = await harness.run_prompt(HarnessPrompt(message_id="m1", text="hi"), emit)
+        assert outcome.success is True
+        client.plan_agent_available.assert_not_awaited()
 
 
 class TestHarnessContracts:

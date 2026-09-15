@@ -17,6 +17,7 @@ function automation(id: string, name: string): AutomationListItem {
     name,
     instructions: "Run maintenance",
     harness: "opencode",
+    executionMode: "build",
     triggerType: "schedule",
     scheduleCron: "0 9 * * *",
     scheduleTz: "UTC",

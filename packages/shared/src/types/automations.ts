@@ -1,4 +1,5 @@
 import { harnessIdSchema } from "../harnesses";
+import { executionModeSchema } from "../execution-modes";
 import { z } from "zod";
 import {
   type AutomationTriggerType,
@@ -111,6 +112,7 @@ const automationSchema = z.object({
   scheduleCron: z.string().nullable(),
   scheduleTz: z.string(),
   harness: harnessIdSchema,
+  executionMode: executionModeSchema,
   model: z.string(),
   reasoningEffort: z.string().nullable(),
   enabled: z.boolean(),
@@ -177,6 +179,8 @@ export const createAutomationRequestSchema = z.object({
   scheduleTz: z.string().optional(),
   /** Agent harness for the sessions this automation creates. Omission means the built-in harness. */
   harness: harnessIdSchema.optional(),
+  /** Build (write) or plan (read-only) for sessions this automation creates. Omission means build. */
+  executionMode: executionModeSchema.optional(),
   model: z.string().optional(),
   reasoningEffort: z.string().nullable().optional(),
   eventType: z.string().optional(),
@@ -197,6 +201,7 @@ export const updateAutomationRequestSchema = z.object({
   scheduleCron: z.string().optional(),
   scheduleTz: z.string().optional(),
   harness: harnessIdSchema.optional(),
+  executionMode: executionModeSchema.optional(),
   model: z.string().optional(),
   reasoningEffort: z.string().nullable().optional(),
   eventType: z.string().optional(),

@@ -29,6 +29,7 @@ function makeAutomation(overrides?: Partial<AutomationRow>): AutomationRow {
     schedule_cron: "0 9 * * *",
     schedule_tz: "UTC",
     harness: "opencode",
+    execution_mode: "build",
     model: "anthropic/claude-sonnet-4-6",
     reasoning_effort: null,
     enabled: 1,

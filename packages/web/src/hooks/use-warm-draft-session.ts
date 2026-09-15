@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createSessionResponseSchema } from "@open-inspect/shared/types/session-api";
 import type { HarnessId } from "@open-inspect/shared/harnesses";
+import type { ExecutionMode } from "@open-inspect/shared/execution-modes";
 import type { ModelProviderSelections } from "@open-inspect/shared/types/provider-accounts";
 import type { SessionSkillSelection } from "@open-inspect/shared/types/skills";
 import { browserApiFetch } from "@/lib/browser-api-fetch";
@@ -12,6 +13,7 @@ import type { InteractiveProviderRoutingIdentity } from "@/lib/provider-selectio
 
 export type WarmDraftSessionRequest = SessionTargetRequestFields & {
   harness: HarnessId;
+  executionMode: ExecutionMode;
   model: string;
   reasoningEffort?: string;
   skillSelection: SessionSkillSelection;

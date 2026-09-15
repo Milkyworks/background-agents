@@ -1,9 +1,10 @@
 {
-  "runtimeVersion": "v67-unbounded-repository-hooks",
-  "generation": 67,
+  "runtimeVersion": "v68-execution-mode",
+  "generation": 68,
   "minimumCompatibleGeneration": 62,
-  "minimumRebuildGeneration": 67,
+  "minimumRebuildGeneration": 68,
   "harnessMinimumGeneration": {
     "claude": 64
-  }
+  },
+  "executionModeMinimumGeneration": 68
 }

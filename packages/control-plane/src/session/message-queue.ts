@@ -2,6 +2,15 @@ import {
   checkHarnessCompatibility,
   getValidHarnessOrDefault,
 } from "@open-inspect/shared/harnesses";
+import {
+  getValidExecutionModeOrDefault,
+  isValidExecutionMode,
+} from "@open-inspect/shared/execution-modes";
+import {
+  assertExecutionModeSupported,
+  ExecutionModeNotSupportedError,
+} from "./execution-mode-gate";
+export { ExecutionModeNotSupportedError };
 import { generateId, hashToken } from "../auth/crypto";
 import type { SessionIndexStore } from "../db/session-index";
 import type { Logger } from "../logger";
@@ -109,13 +118,15 @@ export class HarnessModelIncompatibleError extends Error {
 
 export async function fingerprintWebPrompt(
   participantId: string,
-  data: Pick<PromptMessageData, "content" | "model" | "reasoningEffort" | "attachments">
+  data: Pick<PromptMessageData, "content" | "model" | "reasoningEffort" | "attachments"> &
+    Pick<EnqueuePromptCoreData, "executionMode">
 ): Promise<string> {
   const canonicalRequest = JSON.stringify({
     participantId,
     content: data.content,
     model: data.model ?? null,
     reasoningEffort: data.reasoningEffort ?? null,
+    executionMode: data.executionMode ?? null,
     attachmentIds: data.attachments?.map((attachment) => attachment.attachmentId) ?? [],
   });
   return hashToken(canonicalRequest);
@@ -162,7 +173,9 @@ export class SessionMessageQueue {
     private readonly alarmScheduler: AlarmScheduler,
     private readonly executionStop: ExecutionStopCoordinator,
     /** Resolved per use so it honors settings persisted after construction. */
-    private readonly getExecutionTimeoutMs: () => number
+    private readonly getExecutionTimeoutMs: () => number,
+    /** Sandbox runtime_version row; null when no sandbox has reported. */
+    private readonly getSandboxRuntimeVersion: () => string | null = () => null
   ) {}
 
   async enqueueAutofix(
@@ -254,6 +267,7 @@ export class SessionMessageQueue {
         source: "web",
         model: data.model,
         reasoningEffort: data.reasoningEffort,
+        executionMode: data.executionMode,
         attachments: data.attachments,
         clientRequestId: data.clientRequestId,
       });
@@ -307,6 +321,15 @@ export class SessionMessageQueue {
         this.wsManager.send(ws, {
           type: "error",
           code: "HARNESS_MODEL_INCOMPATIBLE",
+          message: error.message,
+          clientRequestId: data.clientRequestId,
+        });
+        return;
+      }
+      if (error instanceof ExecutionModeNotSupportedError) {
+        this.wsManager.send(ws, {
+          type: "error",
+          code: "EXECUTION_MODE_NOT_SUPPORTED",
           message: error.message,
           clientRequestId: data.clientRequestId,
         });
@@ -413,6 +436,27 @@ export class SessionMessageQueue {
       }
       return;
     }
+    const resolvedExecutionMode = getValidExecutionModeOrDefault(
+      message.execution_mode ?? session?.execution_mode
+    );
+    // Plan mode is never silently downgraded: a sandbox too old to enforce
+    // read-only fails the turn with a user-visible error instead of running
+    // it with write access.
+    try {
+      assertExecutionModeSupported(resolvedExecutionMode, this.getSandboxRuntimeVersion());
+    } catch (gateError) {
+      const gateMessage = gateError instanceof Error ? gateError.message : String(gateError);
+      this.log.error("execution_mode.unsupported", {
+        event: "execution_mode.unsupported",
+        execution_mode: resolvedExecutionMode,
+      });
+      if (this.failMessage(message, gateMessage, now, "pending")) {
+        this.broadcastPromptQueue();
+        await this.sessionStatus.reconcileAfterExecution(false);
+        await this.processMessageQueue();
+      }
+      return;
+    }
     const sandboxWs = this.wsManager.getSandboxSocket();
     if (!sandboxWs) {
       // The provider-auth lookup above is a non-storage await. The socket
@@ -493,6 +537,9 @@ export class SessionMessageQueue {
       content: message.content,
       model: resolvedModel,
       reasoningEffort: resolvedEffort,
+      // Omit-when-build for old-bridge compat: bridges predating execution
+      // modes treat a missing field as build; only plan is sent.
+      ...(resolvedExecutionMode === "plan" ? { executionMode: resolvedExecutionMode } : {}),
       author: {
         userId: author?.user_id ?? "unknown",
         gitIdentity,
@@ -540,6 +587,7 @@ export class SessionMessageQueue {
       outcome: sent ? "sent" : "send_failed",
       model: resolvedModel,
       reasoning_effort: resolvedEffort,
+      execution_mode: resolvedExecutionMode,
       author_id: message.author_id,
       user_id: author?.user_id ?? "unknown",
       source: message.source,
@@ -683,6 +731,7 @@ export class SessionMessageQueue {
       source: data.source,
       model: data.model,
       reasoningEffort: data.reasoningEffort,
+      executionMode: data.executionMode,
       attachments: data.attachments,
       callbackContext: data.callbackContext,
     });
@@ -765,6 +814,28 @@ export class SessionMessageQueue {
       data.reasoningEffort,
       this.log
     );
+
+    // Mirror the model-override check: an unknown string is ignored (the
+    // message falls back to the session default) rather than rejected.
+    let messageExecutionMode: string | null = null;
+    if (data.executionMode !== undefined) {
+      if (isValidExecutionMode(data.executionMode)) {
+        messageExecutionMode = data.executionMode;
+      } else {
+        this.log.warn("Invalid message execution mode, ignoring override", {
+          execution_mode: data.executionMode,
+        });
+      }
+    }
+
+    // Plan mode is never silently downgraded: a sandbox too old to enforce
+    // read-only rejects the prompt with a user-visible error.
+    assertExecutionModeSupported(
+      getValidExecutionModeOrDefault(
+        messageExecutionMode ?? this.repository.getSession()?.execution_mode
+      ),
+      this.getSandboxRuntimeVersion()
+    );
     try {
       this.messageRepository.createMessageWithAttachments(
         {
@@ -774,6 +845,7 @@ export class SessionMessageQueue {
           source: data.source,
           model: messageModel,
           reasoningEffort: messageReasoningEffort,
+          executionMode: messageExecutionMode,
           attachments: attachments ? JSON.stringify(attachments) : null,
           callbackContext: data.callbackContext ? JSON.stringify(data.callbackContext) : null,
           clientRequestId: data.clientRequestId ?? null,
@@ -805,6 +877,7 @@ export class SessionMessageQueue {
       user_id: data.userId,
       model: messageModel,
       reasoning_effort: messageReasoningEffort,
+      execution_mode: messageExecutionMode,
       content_length: data.content.length,
       has_attachments: !!attachments?.length,
       attachments_count: attachments?.length ?? 0,

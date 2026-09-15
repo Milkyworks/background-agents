@@ -13,6 +13,7 @@ describe("initializeSession", () => {
   const baseInput: SessionInitInput = {
     sessionId: "session-123",
     harness: "opencode",
+    executionMode: "build",
     repoOwner: "acme",
     repoName: "web-app",
     repoId: 42,

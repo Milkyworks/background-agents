@@ -49,6 +49,7 @@ describe("session provider auth persistence", () => {
         repoName: null,
         repoId: null,
         harness: "opencode",
+        executionMode: "build",
         model: "anthropic/claude-haiku-4-5",
         reasoningEffort: null,
         participantUserId: "user-1",

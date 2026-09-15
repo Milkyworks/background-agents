@@ -13,6 +13,7 @@ import {
   getValidHarnessOrDefault,
   type HarnessId,
 } from "@open-inspect/shared/harnesses";
+import { getValidExecutionModeOrDefault } from "@open-inspect/shared/execution-modes";
 import {
   matchesConditions,
   conditionRegistry,
@@ -1600,6 +1601,7 @@ export class Scheduler {
       ...target,
       title: `[Auto] ${automation.name}`,
       harness: getValidHarnessOrDefault(automation.harness),
+      executionMode: getValidExecutionModeOrDefault(automation.execution_mode),
       model: automation.model,
       reasoningEffort: automation.reasoning_effort,
       participantUserId: executionPrincipal.participantUserId,

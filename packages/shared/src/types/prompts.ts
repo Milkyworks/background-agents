@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { executionModeSchema } from "../execution-modes";
 import { sessionAttachmentReferencesSchema } from "./session-attachments";
 
 export const MAX_WEB_PROMPT_CHARS = 64_000;
@@ -21,6 +22,7 @@ export const webPromptPayloadSchema = z
     content: promptContentSchema,
     model: z.string().optional(),
     reasoningEffort: z.string().optional(),
+    executionMode: executionModeSchema.optional(),
     attachments: sessionAttachmentReferencesSchema.optional(),
   })
   .refine((prompt) => !isBlankPrompt(prompt), {

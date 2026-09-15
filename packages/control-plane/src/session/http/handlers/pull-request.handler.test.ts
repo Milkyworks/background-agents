@@ -39,6 +39,7 @@ function createSession(overrides: Partial<SessionRow> = {}): SessionRow {
     current_sha: null,
     agent_session_id: null,
     harness: "opencode",
+    execution_mode: "build",
     model: "anthropic/claude-haiku-4-5",
     reasoning_effort: null,
     status: "active",

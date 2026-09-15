@@ -311,6 +311,25 @@ class TestBuildPromptRequestBody:
         assert body["variant"] == "medium"
         assert body["model"] == {"providerID": "xai", "modelID": "grok-4.6"}
 
+    def test_agent_defaults_to_build(self, bridge: AgentBridge):
+        body = bridge.harness.prompt_stream._build_prompt_request_body("Hello", None)
+
+        assert body["agent"] == "build"
+
+    def test_agent_plan_selects_the_plan_agent(self, bridge: AgentBridge):
+        body = bridge.harness.prompt_stream._build_prompt_request_body(
+            "Hello", None, execution_mode="plan"
+        )
+
+        assert body["agent"] == "plan"
+
+    def test_agent_unknown_mode_falls_back_to_build(self, bridge: AgentBridge):
+        body = bridge.harness.prompt_stream._build_prompt_request_body(
+            "Hello", None, execution_mode="turbo"
+        )
+
+        assert body["agent"] == "build"
+
 
 class TestOpenCodeIdentifier:
     """Tests for OpenCode-compatible ascending ID generation."""

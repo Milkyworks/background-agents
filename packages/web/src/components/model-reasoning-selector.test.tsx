@@ -122,6 +122,77 @@ describe("ModelReasoningSelector", () => {
     expect(screen.queryByRole("menuitem", { name: /^agent/i })).not.toBeInTheDocument();
   });
 
+  it("offers no Mode row without the mode change handler", async () => {
+    render(
+      <ModelReasoningSelector
+        selectedModel="anthropic/claude-sonnet-4-6"
+        reasoningEffort="high"
+        items={items}
+        onModelChange={vi.fn()}
+        onReasoningEffortChange={vi.fn()}
+        executionMode="build"
+      />
+    );
+
+    const trigger = screen.getByRole("button", { name: /model and effort/i });
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+    await screen.findByRole("menuitem", { name: /model/i });
+    expect(screen.queryByRole("menuitem", { name: "ModeBuild" })).not.toBeInTheDocument();
+  });
+
+  it("shows the live mode in the trigger and switches it through a Mode submenu", async () => {
+    const onExecutionModeChange = vi.fn();
+    render(
+      <ModelReasoningSelector
+        selectedModel="anthropic/claude-sonnet-4-6"
+        reasoningEffort="high"
+        items={items}
+        onModelChange={vi.fn()}
+        onReasoningEffortChange={vi.fn()}
+        executionMode="plan"
+        onExecutionModeChange={onExecutionModeChange}
+      />
+    );
+
+    const trigger = screen.getByRole("button", {
+      name: "Model and effort:, Mode: Plan, claude sonnet 4.6, High",
+    });
+    expect(trigger).toHaveTextContent("Plan");
+
+    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+    const modeMenu = await screen.findByRole("menuitem", { name: "ModePlan" });
+    expect(modeMenu).toHaveTextContent("Plan");
+    modeMenu.focus();
+    fireEvent.keyDown(modeMenu, { key: "ArrowRight" });
+    const build = await screen.findByRole("menuitemradio", { name: /build/i });
+    fireEvent.click(build);
+    expect(onExecutionModeChange).toHaveBeenCalledWith("build");
+  });
+
+  it("drills into mode options on mobile", async () => {
+    mocks.isMobile = true;
+    const onExecutionModeChange = vi.fn();
+    render(
+      <ModelReasoningSelector
+        selectedModel="anthropic/claude-sonnet-4-6"
+        reasoningEffort="high"
+        items={items}
+        onModelChange={vi.fn()}
+        onReasoningEffortChange={vi.fn()}
+        executionMode="build"
+        onExecutionModeChange={onExecutionModeChange}
+      />
+    );
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: /model and effort/i }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.click(await screen.findByRole("menuitem", { name: "ModeBuild" }));
+    fireEvent.click(await screen.findByRole("menuitemradio", { name: /plan/i }));
+    expect(onExecutionModeChange).toHaveBeenCalledWith("plan");
+  });
+
   it("drills into agent options on mobile", async () => {
     mocks.isMobile = true;
     const onHarnessChange = vi.fn();

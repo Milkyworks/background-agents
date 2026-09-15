@@ -71,6 +71,7 @@ class HarnessPrompt:
     text: str
     model: str | None = None
     reasoning_effort: str | None = None
+    execution_mode: str = "build"
     attachments: Sequence[HydratedSessionAttachment] = ()
     author: Mapping[str, Any] = field(default_factory=dict)
 

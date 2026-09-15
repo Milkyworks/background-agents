@@ -10,6 +10,7 @@ export * from "./service-auth";
 export * from "./http-body";
 export * from "./models";
 export * from "./harnesses";
+export * from "./execution-modes";
 export * from "./cron";
 export * from "./triggers";
 export * from "./completion/extractor";

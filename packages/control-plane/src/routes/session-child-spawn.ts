@@ -255,6 +255,7 @@ export async function handleSpawnChild(
         : null,
     title: body.title,
     harness,
+    executionMode: spawnContext.executionMode,
     model,
     reasoningEffort,
     participantUserId: spawnContext.promptAuthor.userId,

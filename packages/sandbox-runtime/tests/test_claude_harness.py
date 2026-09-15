@@ -36,6 +36,7 @@ from sandbox_runtime.credentials.provider_credential_client import (
 from sandbox_runtime.harness import AgentHarness, HarnessPrompt, HarnessStartError, PromptLimits
 from sandbox_runtime.harness.claude import (
     AUTHENTICATION_FAILED_MESSAGE,
+    PLAN_ALLOWED_TOOLS,
     ClaudeHarness,
     ClaudeHarnessConfig,
     bare_model_id,
@@ -324,6 +325,7 @@ class TestOptions:
         assert options["model"] == "claude-opus-4-6"
         assert options["effort"] == "high"
         assert options["permission_mode"] == "dontAsk"
+        assert "can_use_tool" not in options
         assert options["disallowed_tools"] == ["AskUserQuestion"]
         assert json.loads(options["settings"]) == {
             "attribution": {"commit": "", "pr": "", "sessionUrl": False},
@@ -347,6 +349,64 @@ class TestOptions:
         assert "mcp__linear__*" in options["allowed_tools"]
         assert "mcp__local__*" in options["allowed_tools"]
         assert "Bash" in options["allowed_tools"]
+
+    @pytest.mark.asyncio
+    async def test_plan_options_deny_writes_and_drop_mcp_wildcards(self, tmp_path: Path) -> None:
+        h = Harness(
+            tmp_path,
+            turns=[[_result(0.1)]],
+            mcp_servers=(
+                {
+                    "name": "linear",
+                    "type": "remote",
+                    "url": "https://mcp.linear",
+                    "headers": {"A": "b"},
+                },
+                {"name": "local", "type": "local", "command": ["npx", "server"], "env": {"K": "v"}},
+            ),
+        )
+        await h.harness.open()
+        await h.harness.create_session()
+        await _run(h.harness, HarnessPrompt(message_id="m1", text="hi", execution_mode="plan"))
+        options = h.client.options
+        assert options["permission_mode"] == "plan"
+        for denied in (
+            "Write",
+            "Edit",
+            "MultiEdit",
+            "Bash",
+            "NotebookEdit",
+            "Agent",
+            "Skill",
+            "KillShell",
+        ):
+            assert denied not in options["allowed_tools"]
+        for allowed in PLAN_ALLOWED_TOOLS:
+            assert allowed in options["allowed_tools"]
+        # No MCP wildcards in plan mode: nothing mcp__-qualified is allowlisted.
+        assert [tool for tool in options["allowed_tools"] if tool.startswith("mcp__")] == []
+        # The servers stay connected but uncallable; the tool gate is the
+        # backstop on top of the narrowed allowlist.
+        assert set(options["mcp_servers"]) == {"linear", "local"}
+        assert callable(options["can_use_tool"])
+
+    @pytest.mark.asyncio
+    async def test_plan_options_grant_only_the_read_only_first_party_tool(
+        self, tmp_path: Path
+    ) -> None:
+        h = Harness(tmp_path, turns=[[_result(0.1)]])
+        h.harness._tool_client = MagicMock()
+        h.harness._tool_server = {"sentinel": "server"}
+        await h.harness.open()
+        await h.harness.create_session()
+        await _run(h.harness, HarnessPrompt(message_id="m1", text="hi", execution_mode="plan"))
+        options = h.client.options
+        assert options["mcp_servers"]["oi"] == {"sentinel": "server"}
+        assert "mcp__oi__get-child-status" in options["allowed_tools"]
+        assert "mcp__oi__*" not in options["allowed_tools"]
+        assert [tool for tool in options["allowed_tools"] if tool.startswith("mcp__")] == [
+            "mcp__oi__get-child-status"
+        ]
 
     def test_reasoning_controls_are_per_model(self) -> None:
         assert reasoning_options("claude-sonnet-4-5", "max") == {

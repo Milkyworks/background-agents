@@ -1,4 +1,5 @@
 import { getValidHarnessOrDefault } from "@open-inspect/shared/harnesses";
+import { getValidExecutionModeOrDefault } from "@open-inspect/shared/execution-modes";
 import { childFollowUpPromptRequestSchema } from "@open-inspect/shared/types/session-api";
 import { isSessionPromptable } from "@open-inspect/shared/types/session-activity";
 import { z } from "zod";
@@ -89,6 +90,7 @@ export class ChildSessionsHandler {
       repoName: session.repo_name,
       repoId: session.repo_id,
       harness: getValidHarnessOrDefault(session.harness),
+      executionMode: getValidExecutionModeOrDefault(session.execution_mode),
       model: session.model,
       reasoningEffort: session.reasoning_effort ?? null,
       baseBranch: session.base_branch,

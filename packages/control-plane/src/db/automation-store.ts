@@ -10,6 +10,10 @@ import {
   getValidHarnessOrDefault,
   type HarnessId,
 } from "@open-inspect/shared/harnesses";
+import {
+  DEFAULT_EXECUTION_MODE,
+  getValidExecutionModeOrDefault,
+} from "@open-inspect/shared/execution-modes";
 import type {
   Automation,
   AutomationExecutionSummary,
@@ -73,6 +77,7 @@ export interface AutomationRow {
   schedule_cron: string | null;
   schedule_tz: string;
   harness: HarnessId;
+  execution_mode: string;
   model: string;
   reasoning_effort: string | null;
   enabled: number; // SQLite integer boolean
@@ -259,6 +264,7 @@ export function toAutomation(
     scheduleCron: row.schedule_cron,
     scheduleTz: row.schedule_tz,
     harness: getValidHarnessOrDefault(row.harness),
+    executionMode: getValidExecutionModeOrDefault(row.execution_mode),
     model: row.model,
     reasoningEffort: row.reasoning_effort,
     enabled: row.enabled === 1,
@@ -389,10 +395,10 @@ export class AutomationStore {
       .prepare(
         `INSERT INTO automations
          (id, name, instructions,
-          trigger_type, schedule_cron, schedule_tz, harness, model, reasoning_effort, enabled, next_run_at,
+          trigger_type, schedule_cron, schedule_tz, harness, execution_mode, model, reasoning_effort, enabled, next_run_at,
           consecutive_failures, created_by, user_id, created_at, updated_at, deleted_at,
           event_type, trigger_config, trigger_auth_data)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         row.id,
@@ -402,6 +408,7 @@ export class AutomationStore {
         row.schedule_cron,
         row.schedule_tz,
         row.harness ?? DEFAULT_HARNESS,
+        row.execution_mode ?? DEFAULT_EXECUTION_MODE,
         row.model,
         row.reasoning_effort,
         row.enabled,
@@ -562,6 +569,7 @@ export class AutomationStore {
       "schedule_cron",
       "schedule_tz",
       "harness",
+      "execution_mode",
       "model",
       "reasoning_effort",
       "next_run_at",

@@ -30,6 +30,27 @@ class SSEInactivityTimeoutError(Exception):
     """Raised when no SSE data arrives within the inactivity deadline."""
 
 
+def _agent_denies_writes(agent: dict[str, Any]) -> bool:
+    """Whether an `/agent` entry denies the write/edit/patch/bash tools.
+
+    Reads both the permission ruleset and the tool allowlist because a
+    blanket top-level allow rule can out-rank an agent's deny rules
+    (findLast-wins), in which case relying on the built-in plan agent would
+    be theatre. Either a deny rule or a disabled tool flag counts.
+    """
+    permission = agent.get("permission")
+    if isinstance(permission, dict):
+        for tool in ("edit", "write", "patch", "bash"):
+            if permission.get(tool) == "deny":
+                return True
+    tools = agent.get("tools")
+    if isinstance(tools, dict):
+        for tool in ("write", "edit", "patch", "bash"):
+            if tools.get(tool) is False:
+                return True
+    return False
+
+
 class OpenCodeClient:
     """HTTP/SSE transport for the local OpenCode server.
 
@@ -57,6 +78,7 @@ class OpenCodeClient:
         self._owns_http_client = http_client is None
         self._connect_timeout_seconds = connect_timeout_seconds
         self._request_timeout_seconds = request_timeout_seconds
+        self._plan_agent_available: bool | None = None
 
     async def aclose(self) -> None:
         if self._owns_http_client and self._http_client is not None:
@@ -93,6 +115,40 @@ class OpenCodeClient:
             timeout=self._request_timeout_seconds,
         )
         return response.status_code == 200
+
+    async def plan_agent_available(self) -> bool:
+        """Whether the server lists a write-denied `plan` agent (startup probe).
+
+        Cached after the first probe: the server is long-lived and its agent
+        set is frozen at launch. Any probe failure reads as unavailable so a
+        plan prompt fails loudly instead of running as build.
+        """
+        if self._plan_agent_available is None:
+            self._plan_agent_available = await self._probe_plan_agent()
+        return self._plan_agent_available
+
+    async def _probe_plan_agent(self) -> bool:
+        try:
+            response = await self._client().get(
+                f"{self._base_url}/agent",
+                timeout=self._request_timeout_seconds,
+            )
+            response.raise_for_status()
+            agents = response.json()
+        except Exception as error:
+            self._log.warn("opencode.plan_probe_failed", exc=error)
+            return False
+        entries = agents if isinstance(agents, list) else agents.get("agents", [])
+        if not isinstance(entries, list):
+            return False
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            name = entry.get("name")
+            if name != "plan":
+                continue
+            return _agent_denies_writes(entry)
+        return False
 
     @asynccontextmanager
     async def events(
