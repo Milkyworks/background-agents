@@ -18,6 +18,7 @@ const automation = {
   scheduleTz: "UTC",
   model: "anthropic/claude-sonnet-4-6",
   harness: "opencode",
+  executionMode: "build",
   reasoningEffort: null,
   enabled: true,
   nextRunAt: 123,

@@ -26,6 +26,7 @@ function createSessionState(overrides: Partial<SessionState> = {}): SessionState
     status: "active",
     sandboxStatus: "ready",
     harness: "opencode",
+    executionMode: "build",
     messageCount: 0,
     createdAt: 1,
     ...overrides,

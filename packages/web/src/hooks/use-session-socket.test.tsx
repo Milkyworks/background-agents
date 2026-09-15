@@ -85,6 +85,7 @@ function createSessionState(overrides: Partial<SessionState> = {}): SessionState
     status: "active",
     sandboxStatus: "ready",
     harness: "opencode",
+    executionMode: "build",
     messageCount: 0,
     createdAt: 1,
     ...overrides,
@@ -201,7 +202,6 @@ describe("useSessionSocket", () => {
         reasoningEffort: "high",
       });
     });
-
     let settled = false;
     void acknowledgement.then(() => {
       settled = true;
@@ -222,6 +222,37 @@ describe("useSessionSocket", () => {
       clientRequestId: "client-id",
       messageId: "message-1",
       position: 1,
+    });
+  });
+
+  it("carries executionMode into the socket prompt payload", async () => {
+    const { result } = renderHook(() =>
+      useSessionSocket("session-1", createSnapshot(), FULL_CAPABILITIES)
+    );
+
+    await waitFor(() => {
+      expect(FakeWebSocket.instances).toHaveLength(1);
+    });
+
+    const socket = FakeWebSocket.instances[0];
+    act(() => {
+      socket.open();
+      socket.receive(createSubscribedMessage());
+    });
+
+    act(() => {
+      void result.current.sendPrompt("Plan this", "model-1", "high", undefined, undefined, "plan");
+    });
+
+    await waitFor(() => {
+      expect(socket.sentMessages).toContainEqual({
+        type: "prompt",
+        clientRequestId: "client-id",
+        content: "Plan this",
+        model: "model-1",
+        reasoningEffort: "high",
+        executionMode: "plan",
+      });
     });
   });
 

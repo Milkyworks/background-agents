@@ -7,6 +7,7 @@ export interface PromptMessageData {
   content: string;
   model?: string;
   reasoningEffort?: string;
+  executionMode?: string;
   attachments?: SessionAttachmentReference[];
 }
 
@@ -17,6 +18,7 @@ export interface EnqueuePromptCoreData {
   source: MessageSource;
   model?: string;
   reasoningEffort?: string;
+  executionMode?: string;
   attachments?: SessionAttachmentReference[];
   callbackContext?: Record<string, unknown>;
   clientRequestId?: string;

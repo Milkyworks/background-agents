@@ -11,6 +11,7 @@ import {
   BudgetExhaustedError,
   PromptQueueFullError,
   HarnessModelIncompatibleError,
+  ExecutionModeNotSupportedError,
   PromptRequestConflictError,
   SessionNotPromptableError,
 } from "../../message-queue";
@@ -54,6 +55,12 @@ export class MessagesHandler {
       if (error instanceof HarnessModelIncompatibleError) {
         return Response.json(
           { error: error.message, code: "HARNESS_MODEL_INCOMPATIBLE" },
+          { status: 400 }
+        );
+      }
+      if (error instanceof ExecutionModeNotSupportedError) {
+        return Response.json(
+          { error: error.message, code: "EXECUTION_MODE_NOT_SUPPORTED" },
           { status: 400 }
         );
       }

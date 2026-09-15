@@ -90,6 +90,7 @@ export class SessionLifecycleHandler {
       currentSha: session.current_sha,
       agentSessionId: session.agent_session_id,
       harness: session.harness,
+      execution_mode: session.execution_mode,
       status: session.status,
       model: session.model,
       reasoningEffort: session.reasoning_effort ?? undefined,

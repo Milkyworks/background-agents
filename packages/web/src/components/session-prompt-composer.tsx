@@ -17,6 +17,7 @@ import type { PromptSkillSuggestionSource } from "@/lib/prompt-skill-completion"
 import type { ModelCategory, ReasoningEffort, ValidModel } from "@open-inspect/shared/models";
 import type { SessionCapabilities } from "@/lib/session-capabilities";
 import type { HarnessId } from "@open-inspect/shared/harnesses";
+import { EXECUTION_MODE_CATALOG, type ExecutionMode } from "@open-inspect/shared/execution-modes";
 
 type SessionPromptComposerProps = {
   session: {
@@ -58,6 +59,13 @@ type SessionPromptComposerProps = {
     onModelChange: (model: ValidModel) => void;
     onReasoningEffortChange: (value: ReasoningEffort | undefined) => void;
   };
+  mode: {
+    executionMode: ExecutionMode;
+    onExecutionModeChange: (mode: ExecutionMode) => void;
+    onPinModeModel?: (mode: ExecutionMode) => void;
+    onClearModeModel?: (mode: ExecutionMode) => void;
+    hasPinnedModeModel?: (mode: ExecutionMode) => boolean;
+  };
 };
 
 export function SessionPromptComposer({
@@ -66,6 +74,7 @@ export function SessionPromptComposer({
   skillSuggestions,
   attachments,
   model,
+  mode,
 }: SessionPromptComposerProps) {
   const { labels } = useKeyboardShortcuts();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -215,12 +224,19 @@ export function SessionPromptComposer({
                 onModelChange={model.onModelChange}
                 onReasoningEffortChange={model.onReasoningEffortChange}
                 harness={session.harness}
+                executionMode={mode.executionMode}
+                onExecutionModeChange={mode.onExecutionModeChange}
+                onPinModeModel={mode.onPinModeModel}
+                onClearModeModel={mode.onClearModeModel}
+                hasPinnedModeModel={mode.hasPinnedModeModel}
                 disabled={prompt.draftLocked || !sessionPromptable}
               />
             </div>
 
-            {/* Right side - Agent label */}
-            <span className="hidden sm:inline text-sm text-muted-foreground">build agent</span>
+            {/* Right side - live execution mode */}
+            <span className="hidden sm:inline text-sm text-muted-foreground">
+              {EXECUTION_MODE_CATALOG[mode.executionMode].label.toLowerCase()} agent
+            </span>
           </div>
           {prompt.submitError && (
             <p

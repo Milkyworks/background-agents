@@ -12,3 +12,7 @@ export const MIN_REBUILD_RUNTIME_GENERATION = runtimeManifest.minimumRebuildGene
 /** Per-harness image floors; see minCompatibleRuntimeVersionFor in image-builds/model.ts. */
 export const HARNESS_MIN_RUNTIME_GENERATION: Readonly<Partial<Record<string, number>>> =
   runtimeManifest.harnessMinimumGeneration;
+/** Floor below which a sandbox cannot honour plan mode; plan prompts are rejected, never downgraded. */
+export const EXECUTION_MODE_MINIMUM_GENERATION: number =
+  (runtimeManifest as { executionModeMinimumGeneration?: number }).executionModeMinimumGeneration ??
+  68;

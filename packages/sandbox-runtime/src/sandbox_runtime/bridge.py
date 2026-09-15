@@ -656,6 +656,9 @@ class AgentBridge:
         content = cmd.get("content", "")
         model = cmd.get("model")
         reasoning_effort = cmd.get("reasoningEffort")
+        execution_mode = cmd.get("executionMode")
+        if execution_mode != "plan":
+            execution_mode = "build"
         raw_attachments = cmd.get("attachments")
         author_data = cmd.get("author", {})
         start_time = time.time()
@@ -669,6 +672,7 @@ class AgentBridge:
             message_id=message_id,
             model=model,
             reasoning_effort=reasoning_effort,
+            execution_mode=execution_mode,
         )
 
         try:
@@ -712,6 +716,7 @@ class AgentBridge:
                     text=content,
                     model=model,
                     reasoning_effort=reasoning_effort,
+                    execution_mode=execution_mode,
                     attachments=tuple(attachments or ()),
                     author=author_data if isinstance(author_data, dict) else {},
                 ),

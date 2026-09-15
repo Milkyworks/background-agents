@@ -224,14 +224,14 @@ any child starting/running → `starting`/`running`; all terminal → `completed
 
 ### Client → Server Messages
 
-| Type        | Description        | Payload                     |
-| ----------- | ------------------ | --------------------------- |
-| `ping`      | Health check       | `{}`                        |
-| `subscribe` | Join session       | `{ token, clientId }`       |
-| `prompt`    | Send prompt        | `{ content, attachments? }` |
-| `stop`      | Stop execution     | `{}`                        |
-| `typing`    | User typing (warm) | `{}`                        |
-| `presence`  | Update presence    | `{ status, cursor? }`       |
+| Type        | Description        | Payload                                                                                 |
+| ----------- | ------------------ | --------------------------------------------------------------------------------------- |
+| `ping`      | Health check       | `{}`                                                                                    |
+| `subscribe` | Join session       | `{ token, clientId }`                                                                   |
+| `prompt`    | Send prompt        | `{ content, model?, reasoningEffort?, executionMode?, attachments?, clientRequestId? }` |
+| `stop`      | Stop execution     | `{}`                                                                                    |
+| `typing`    | User typing (warm) | `{}`                                                                                    |
+| `presence`  | Update presence    | `{ status, cursor? }`                                                                   |
 
 ### Server → Client Messages
 

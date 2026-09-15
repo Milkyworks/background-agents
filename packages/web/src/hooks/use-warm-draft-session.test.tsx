@@ -19,6 +19,7 @@ const request = (model = "openai/gpt-5.4"): WarmDraftSessionRequest => ({
   repoOwner: "open-inspect",
   repoName: "background-agents",
   harness: "opencode",
+  executionMode: "build",
   model,
   skillSelection: { mode: "all" },
   providerSelections: {
@@ -49,6 +50,7 @@ describe("useWarmDraftSession", () => {
           skillSelection: { mode: "all" },
           model: "openai/gpt-5.4",
           harness: "opencode",
+          executionMode: "build",
           repoName: "background-agents",
           repoOwner: "open-inspect",
         },

@@ -24,11 +24,14 @@ from claude_agent_sdk import (
     ClaudeSDKClient,
     ConversationResetMessage,
     MessageOrigin,
+    PermissionResultAllow,
+    PermissionResultDeny,
     RateLimitEvent,
     ResultMessage,
     StreamEvent,
     SystemMessage,
     TextBlock,
+    ToolPermissionContext,
     ToolResultBlock,
     ToolUseBlock,
     UserMessage,
@@ -94,6 +97,32 @@ ALLOWED_TOOLS: Final = (
     "KillShell",
 )
 DISALLOWED_TOOLS: Final = ("AskUserQuestion",)
+# Plan-mode backstop: the read-only slice of ALLOWED_TOOLS plus nothing else.
+# Native plan mode (`permission_mode="plan"`) gives the model the plan-mode
+# system prompt; this list holds even if the SDK's plan semantics shift.
+PLAN_ALLOWED_TOOLS: Final = (
+    "Read",
+    "Glob",
+    "Grep",
+    "LS",
+    "WebFetch",
+    "WebSearch",
+    "TodoWrite",
+    "TaskCreate",
+    "TaskUpdate",
+    "TaskList",
+    "BashOutput",
+)
+# The one OI tool server tool a plan turn may call: read-only child status.
+# Spawning, prompting, or cancelling children would escape plan mode.
+PLAN_READ_ONLY_OI_TOOLS: Final = (f"mcp__{OI_TOOL_SERVER_NAME}__get-child-status",)
+# Framing appended to the plan-mode system prompt so the model knows why it
+# has no editing tools (and to keep plan turns faithful if native plan mode
+# ever degrades to tool-level enforcement alone).
+PLAN_SYSTEM_PROMPT_APPEND: Final = (
+    "You are in read-only planning mode: investigate the repository, then "
+    "write the plan as your reply. Do not edit, write, or execute files."
+)
 # Claude's sub-agent tool. The timeline groups child activity under the
 # runtime-neutral task tool, so the vendor name never reaches the wire.
 SUBAGENT_TOOL_NAME: Final = "Agent"
@@ -297,6 +326,7 @@ class ClaudeHarness:
         self._client: SdkClient | None = None
         self._connected_model: str | None = None
         self._connected_effort: str | None = None
+        self._connected_mode: str = "build"
         self._resume_on_connect = False
         self._needs_reconnect = False
         self._reconnects = 0
@@ -375,22 +405,38 @@ class ClaudeHarness:
 
     # --- connection ------------------------------------------------------------
 
-    def build_options(self, model: str, reasoning_effort: str | None) -> Any:
+    def build_options(
+        self, model: str, reasoning_effort: str | None, execution_mode: str = "build"
+    ) -> Any:
         """``ClaudeAgentOptions`` from the session's inputs (§5.1 of the design)."""
         if self.credential is None or self.wrapper_path is None or self.session_id is None:
             raise RuntimeError("Claude harness is not open")
+        plan_mode = execution_mode == "plan"
         mcp_servers: dict[str, Any] = mcp_server_options(self.config.mcp_servers)
-        allowed_tools = [*ALLOWED_TOOLS]
-        allowed_tools.extend(f"mcp__{name}__*" for name in mcp_servers)
+        if plan_mode:
+            # No MCP wildcards in plan mode: an MCP server can write, and the
+            # OI tool server can spawn children — either escapes plan mode.
+            # The servers stay connected but uncallable; `can_use_tool` below
+            # is the backstop on top of this narrowed allowlist.
+            allowed_tools = [*PLAN_ALLOWED_TOOLS]
+        else:
+            allowed_tools = [*ALLOWED_TOOLS]
+            allowed_tools.extend(f"mcp__{name}__*" for name in mcp_servers)
         if self._tool_client is not None:
             if self._tool_server is None:
                 factory = self._tool_server_factory or _default_tool_server
                 self._tool_server = factory(self._tool_client)
             mcp_servers[OI_TOOL_SERVER_NAME] = self._tool_server
-            allowed_tools.append(f"mcp__{OI_TOOL_SERVER_NAME}__*")
+            if plan_mode:
+                allowed_tools.extend(PLAN_READ_ONLY_OI_TOOLS)
+            else:
+                allowed_tools.append(f"mcp__{OI_TOOL_SERVER_NAME}__*")
         system_prompt: dict[str, Any] = {"type": "preset", "preset": "claude_code"}
-        if self.config.system_prompt_append:
-            system_prompt["append"] = self.config.system_prompt_append
+        appends = [self.config.system_prompt_append] if self.config.system_prompt_append else []
+        if plan_mode:
+            appends.append(PLAN_SYSTEM_PROMPT_APPEND)
+        if appends:
+            system_prompt["append"] = "\n\n".join(appends)
         kwargs: dict[str, Any] = {
             "cwd": str(self.config.workdir),
             "cli_path": str(self.wrapper_path),
@@ -399,7 +445,7 @@ class ClaudeHarness:
             "mcp_servers": mcp_servers,
             "allowed_tools": allowed_tools,
             "disallowed_tools": [*DISALLOWED_TOOLS],
-            "permission_mode": "dontAsk",
+            "permission_mode": "plan" if plan_mode else "dontAsk",
             "system_prompt": system_prompt,
             "settings": CLAUDE_POLICY_SETTINGS,
             "setting_sources": ["user", "project"],
@@ -407,6 +453,8 @@ class ClaudeHarness:
             "forward_subagent_text": False,
             **reasoning_options(model, reasoning_effort),
         }
+        if plan_mode:
+            kwargs["can_use_tool"] = self._plan_tool_gate
         if self._resume_on_connect:
             kwargs["resume"] = self.session_id
         else:
@@ -414,11 +462,36 @@ class ClaudeHarness:
         build_options = self._options_factory or _default_options_factory
         return build_options(**kwargs)
 
-    async def _ensure_client(self, model: str, reasoning_effort: str | None) -> SdkClient:
+    async def _plan_tool_gate(
+        self, tool_name: str, tool_input: dict[str, Any], _context: ToolPermissionContext
+    ) -> PermissionResultAllow | PermissionResultDeny:
+        """Plan-mode tool gate: the read-only set passes, everything else is denied.
+
+        `ExitPlanMode` is how native plan mode terminates; it never reaches the
+        allowlist, so the gate sees it here. Denying with a "planning complete"
+        message settles the turn instead of continuing into edits (this sandbox
+        has no interactive channel to approve the exit through).
+        """
+        if tool_name == "ExitPlanMode":
+            return PermissionResultDeny(
+                message="Planning complete. Present the plan from the tool input as your reply."
+            )
+        if tool_name in PLAN_ALLOWED_TOOLS or tool_name in PLAN_READ_ONLY_OI_TOOLS:
+            return PermissionResultAllow()
+        return PermissionResultDeny(
+            message=f"{tool_name} is not available in read-only planning mode."
+        )
+
+    async def _ensure_client(
+        self, model: str, reasoning_effort: str | None, execution_mode: str = "build"
+    ) -> SdkClient:
+        if execution_mode != "plan":
+            execution_mode = "build"
         same_shape = (
             self._client is not None
             and self._connected_model == model
             and self._connected_effort == reasoning_effort
+            and self._connected_mode == execution_mode
             and not self._needs_reconnect
         )
         if same_shape and self._client is not None:
@@ -433,7 +506,7 @@ class ClaudeHarness:
                     "start a new session."
                 )
         await self._disconnect()
-        options = self.build_options(model, reasoning_effort)
+        options = self.build_options(model, reasoning_effort, execution_mode)
         factory = self._client_factory or _default_client_factory
         client = factory(options)
         # Held before connect so a connect the deadline cuts short is still
@@ -442,6 +515,8 @@ class ClaudeHarness:
         await client.connect()
         self._connected_model = model
         self._connected_effort = reasoning_effort
+        mode_switched = self._connected_mode != execution_mode
+        self._connected_mode = execution_mode
         self._needs_reconnect = False
         # A fresh child starts its running total at zero (§5.3 baseline rule).
         self._cost_baseline = 0.0
@@ -449,8 +524,11 @@ class ClaudeHarness:
             "claude.connected",
             model=model,
             reasoning_effort=reasoning_effort,
+            execution_mode=execution_mode,
             resume=self._resume_on_connect,
         )
+        if mode_switched:
+            self.log.info("claude.mode_switch", execution_mode=execution_mode)
         # Every later (re)connect resumes the transcript this child writes.
         self._resume_on_connect = True
         return client
@@ -477,9 +555,10 @@ class ClaudeHarness:
         # never eat the snapshot reserve.
         loop = asyncio.get_running_loop()
         deadline = loop.time() + self.limits.prompt_max_duration_seconds
+        execution_mode = prompt.execution_mode if prompt.execution_mode == "plan" else "build"
         try:
             async with asyncio.timeout_at(deadline):
-                client = await self._ensure_client(model, prompt.reasoning_effort)
+                client = await self._ensure_client(model, prompt.reasoning_effort, execution_mode)
         except HarnessStartError:
             raise
         except TimeoutError:

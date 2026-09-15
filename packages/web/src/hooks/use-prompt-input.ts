@@ -28,6 +28,7 @@ export function usePromptInput(
   sendTyping: ReturnType<typeof useSessionSocket>["sendTyping"],
   selectedModel: string,
   reasoningEffort: string | undefined,
+  executionMode: string,
   loadingEnabledModels: boolean,
   sessionStatus: SessionStatus,
   canSubmit: boolean,
@@ -62,7 +63,7 @@ export function usePromptInput(
   useEffect(() => clearTypingTimeout, [clearTypingTimeout]);
   useEffect(() => {
     retryRequestRef.current = null;
-  }, [selectedModel, reasoningEffort, attachmentDraftSignature]);
+  }, [selectedModel, reasoningEffort, executionMode, attachmentDraftSignature]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -100,6 +101,7 @@ export function usePromptInput(
         content,
         model: selectedModel,
         reasoningEffort,
+        executionMode,
         attachmentIds: sessionAttachments.attachments.map((attachment) => attachment.id),
       });
       const requestIdentity = resolvePromptRequestIdentity(signature, retryRequestRef.current);
@@ -109,7 +111,8 @@ export function usePromptInput(
         selectedModel,
         reasoningEffort,
         attachments,
-        requestIdentity.clientRequestId
+        requestIdentity.clientRequestId,
+        executionMode
       );
       if (!result.ok) {
         setSubmitError(

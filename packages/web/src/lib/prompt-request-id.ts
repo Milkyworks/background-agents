@@ -7,6 +7,7 @@ export function promptRequestSignature(input: {
   content: string;
   model: string;
   reasoningEffort?: string;
+  executionMode?: string;
   attachmentIds: string[];
 }): string {
   return JSON.stringify(input);

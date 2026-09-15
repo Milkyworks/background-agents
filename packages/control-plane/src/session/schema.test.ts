@@ -59,6 +59,7 @@ it("upgrades existing sessions with a persisted status revision and preserves it
   try {
     db.exec("CREATE TABLE session (id TEXT PRIMARY KEY, status TEXT, updated_at INTEGER)");
     db.exec("INSERT INTO session VALUES ('legacy', 'archived', 5000)");
+    db.exec("CREATE TABLE messages (id TEXT PRIMARY KEY)");
     db.exec(
       "CREATE TABLE _schema_migrations (id INTEGER PRIMARY KEY, applied_at INTEGER NOT NULL)"
     );
@@ -71,6 +72,7 @@ it("upgrades existing sessions with a persisted status revision and preserves it
       status: "archived",
       updated_at: 5000,
       status_revision: 1,
+      execution_mode: "build",
     });
     db.exec("UPDATE session SET status_revision = 7");
     applyMigrations(createDatabaseSql(db));

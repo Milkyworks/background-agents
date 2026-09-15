@@ -473,6 +473,13 @@ above the sandbox is harness-neutral. The bridge owns turn completion: a harness
 of a turn and the bridge emits the single `execution_complete` event. Follow-up prompts queue until
 the running turn ends on both harnesses.
 
+Orthogonal to the harness is the **execution mode**: **Build** (write access, the default) or
+**Plan** (read-only — the agent investigates and writes a plan without touching the repo). The mode
+is chosen at session create and switchable per prompt from the composer; each harness enforces its
+own plan mode natively (OpenCode's write-denied `plan` agent, Claude's plan permission mode plus a
+read-only tool allowlist). A plan prompt a sandbox cannot enforce — an image older than the
+execution-mode floor — is rejected with an error, never silently run as build.
+
 ### What the Agent Can Do
 
 | Capability              | Description                              |

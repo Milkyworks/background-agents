@@ -26,6 +26,10 @@
       "import": "./dist/harnesses.js",
       "types": "./dist/harnesses.d.ts"
     },
+    "./execution-modes": {
+      "import": "./dist/execution-modes.js",
+      "types": "./dist/execution-modes.d.ts"
+    },
     "./classification": {
       "import": "./dist/classification.js",
       "types": "./dist/classification.d.ts"

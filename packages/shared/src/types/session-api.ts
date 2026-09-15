@@ -1,4 +1,5 @@
 import { harnessIdSchema } from "../harnesses";
+import { executionModeSchema } from "../execution-modes";
 import { z } from "zod";
 import { sessionSkillSelectionSchema } from "./skills";
 import type { AgentResponse } from "./artifacts";
@@ -232,6 +233,8 @@ const createSessionRequestBaseSchema = z.object({
   title: z.string().optional(),
   /** Agent harness; fixed at create like base_branch. Omission means the built-in harness. */
   harness: harnessIdSchema.optional(),
+  /** Build (write) or plan (read-only). Omission means build. */
+  executionMode: executionModeSchema.optional(),
   model: z.string().optional(),
   reasoningEffort: z.string().optional(),
   branch: z.string().optional(),

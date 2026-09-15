@@ -49,6 +49,7 @@ function makeAutomation(overrides: Partial<AutomationListItem> = {}): Automation
     name: "Nightly review",
     instructions: "Review the repo.",
     harness: "opencode",
+    executionMode: "build",
     triggerType: "schedule",
     scheduleCron: "0 9 * * *",
     scheduleTz: "UTC",

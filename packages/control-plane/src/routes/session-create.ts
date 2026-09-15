@@ -6,6 +6,7 @@ import {
   checkHarnessCompatibility,
   getValidHarnessOrDefault,
 } from "@open-inspect/shared/harnesses";
+import { getValidExecutionModeOrDefault } from "@open-inspect/shared/execution-modes";
 import { getValidModelOrDefault, isValidReasoningEffort } from "@open-inspect/shared/models";
 import type { CreateSessionResponse } from "@open-inspect/shared/types/session-api";
 import { generateId } from "../auth/crypto";
@@ -205,6 +206,7 @@ export async function handleCreateSession(
 
   // Validate harness, model and reasoning effort once for both DO init and D1 index
   const harness = getValidHarnessOrDefault(body.harness);
+  const executionMode = getValidExecutionModeOrDefault(body.executionMode);
   const model = getValidModelOrDefault(body.model);
   const harnessModelIncompatibility = checkHarnessCompatibility(harness, model);
   if (harnessModelIncompatibility) return error(harnessModelIncompatibility.message, 400);
@@ -270,6 +272,7 @@ export async function handleCreateSession(
     environmentId,
     title: body.title,
     harness,
+    executionMode,
     model,
     reasoningEffort,
     participantUserId,

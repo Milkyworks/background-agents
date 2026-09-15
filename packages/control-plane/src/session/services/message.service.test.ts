@@ -185,6 +185,7 @@ describe("MessageService", () => {
         source: "web",
         model: null,
         reasoning_effort: null,
+        execution_mode: null,
         attachments: JSON.stringify([
           {
             name: "screenshot.png",
@@ -212,6 +213,7 @@ describe("MessageService", () => {
         source: "web",
         model: null,
         reasoning_effort: null,
+        execution_mode: null,
         attachments: "invalid-json",
         callback_context: null,
         client_request_id: null,
@@ -233,6 +235,7 @@ describe("MessageService", () => {
         source: "web",
         model: null,
         reasoning_effort: null,
+        execution_mode: null,
         attachments: null,
         callback_context: null,
         client_request_id: null,
@@ -280,6 +283,7 @@ describe("MessageService", () => {
         source: "web",
         model: null,
         reasoning_effort: null,
+        execution_mode: null,
         attachments: "[]",
         callback_context: null,
         client_request_id: null,

@@ -71,6 +71,7 @@ CREATE TABLE IF NOT EXISTS session (
   current_sha TEXT,                                 -- Current HEAD SHA
   agent_session_id TEXT,                            -- The agent's own conversation id (1:1 mapping)
   harness TEXT NOT NULL DEFAULT 'opencode',         -- Agent harness: 'opencode' | 'claude'; fixed at create
+  execution_mode TEXT NOT NULL DEFAULT 'build',    -- 'build' (write) | 'plan' (read-only)
   model TEXT DEFAULT 'anthropic/claude-haiku-4-5',   -- LLM model to use
   reasoning_effort TEXT,                            -- Session-level reasoning effort default
   status TEXT DEFAULT 'created',                    -- 'created', 'active', 'completed', 'failed', 'archived', 'cancelled'
@@ -123,8 +124,9 @@ CREATE TABLE IF NOT EXISTS messages (
   author_id TEXT NOT NULL,
   content TEXT NOT NULL,
   source TEXT NOT NULL,                             -- 'web', 'slack', 'extension', 'github'
-  model TEXT,                                       -- LLM model for this specific message (per-message override)
-  reasoning_effort TEXT,                            -- Per-message reasoning effort override
+   model TEXT,                                       -- LLM model for this specific message (per-message override)
+   reasoning_effort TEXT,                            -- Per-message reasoning effort override
+   execution_mode TEXT,                              -- Per-message execution mode override (NULL = session default)
   attachments TEXT,                                 -- JSON array
   callback_context TEXT,                            -- JSON callback context for Slack follow-up notifications
   client_request_id TEXT,                           -- Web-client idempotency key
@@ -693,6 +695,17 @@ export const MIGRATIONS: readonly SchemaMigration[] = [
     id: 51,
     description: "Fence session status projections independently of activity",
     run: `ALTER TABLE session ADD COLUMN status_revision INTEGER NOT NULL DEFAULT 1`,
+  },
+  {
+    id: 52,
+    description: "Add execution_mode to session and messages",
+    run: (sql) => {
+      runMigration(
+        sql,
+        `ALTER TABLE session ADD COLUMN execution_mode TEXT NOT NULL DEFAULT 'build'`
+      );
+      runMigration(sql, `ALTER TABLE messages ADD COLUMN execution_mode TEXT`);
+    },
   },
 ];
 

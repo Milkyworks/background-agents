@@ -27,4 +27,22 @@ describe("prompt request identity", () => {
     );
     expect(changed.clientRequestId).toBe("request-2");
   });
+
+  it("treats a mode-only change as a new request", () => {
+    const build = promptRequestSignature({
+      content: "Same text",
+      model: "model-1",
+      reasoningEffort: "high",
+      executionMode: "build",
+      attachmentIds: [],
+    });
+    const plan = promptRequestSignature({
+      content: "Same text",
+      model: "model-1",
+      reasoningEffort: "high",
+      executionMode: "plan",
+      attachmentIds: [],
+    });
+    expect(plan).not.toBe(build);
+  });
 });

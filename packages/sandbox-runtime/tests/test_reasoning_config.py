@@ -38,3 +38,14 @@ async def test_manual_variants_available_when_switching_from_adaptive_model(reas
                 "max": {"thinking": {"type": "enabled", "budgetTokens": 31_999}},
             }
         }
+
+
+async def test_agent_build_and_plan_blocks(reasoning_config):
+    # Build stays unrestricted; plan denies every mutating tool twice (tools
+    # off-switch plus permission deny) so plan prompts are read-only.
+    assert reasoning_config["permission"] == {"*": {"*": "allow"}}
+    assert reasoning_config["agent"]["build"] == {"permission": {"*": {"*": "allow"}}}
+    assert reasoning_config["agent"]["plan"] == {
+        "tools": {"write": False, "edit": False, "patch": False, "bash": False},
+        "permission": {"edit": "deny", "write": "deny", "patch": "deny", "bash": "deny"},
+    }

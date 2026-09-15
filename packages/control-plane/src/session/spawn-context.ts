@@ -1,5 +1,6 @@
 import { isValidSandboxTimeoutMs } from "@open-inspect/shared/types/integrations";
 import { harnessIdSchema } from "@open-inspect/shared/harnesses";
+import { executionModeSchema } from "@open-inspect/shared/execution-modes";
 import { z } from "zod";
 
 const sandboxTimeoutMsSchema = z.number().refine(isValidSandboxTimeoutMs);
@@ -31,6 +32,8 @@ export const spawnContextSchema = z.object({
   repoId: z.number().nullable(),
   /** Children inherit the parent's harness; a child cannot change it. */
   harness: harnessIdSchema,
+  /** Children inherit the parent's execution mode; a child cannot change it. */
+  executionMode: executionModeSchema,
   model: z.string(),
   reasoningEffort: z.string().nullable(),
   baseBranch: z.string().nullable(),

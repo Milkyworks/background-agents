@@ -1,4 +1,5 @@
 import { DEFAULT_HARNESS, harnessIdSchema } from "../harnesses";
+import { DEFAULT_EXECUTION_MODE, executionModeSchema } from "../execution-modes";
 import { z } from "zod";
 import { sessionArtifactSchema } from "./artifacts";
 import { sessionRepositoryStateSchema } from "./repositories";
@@ -32,6 +33,7 @@ const sessionStateSchema = z.object({
    * an absent value.
    */
   harness: harnessIdSchema.default(DEFAULT_HARNESS),
+  executionMode: executionModeSchema.default(DEFAULT_EXECUTION_MODE),
   model: z.string().optional(),
   reasoningEffort: z.string().optional(),
   isProcessing: z.boolean().optional(),

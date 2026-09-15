@@ -20,6 +20,7 @@ function session(overrides: Partial<SessionRow> = {}): SessionRow {
     current_sha: null,
     agent_session_id: null,
     harness: "opencode",
+    execution_mode: "build",
     model: "anthropic/claude-sonnet-4-6",
     reasoning_effort: null,
     status: "active",

@@ -3,6 +3,11 @@ import {
   getValidHarnessOrDefault,
   type HarnessId,
 } from "@open-inspect/shared/harnesses";
+import {
+  DEFAULT_EXECUTION_MODE,
+  getValidExecutionModeOrDefault,
+  type ExecutionMode,
+} from "@open-inspect/shared/execution-modes";
 import type {
   PullRequestSummary,
   SessionReadAction,
@@ -70,6 +75,8 @@ export interface SessionEntry {
   repoName: string | null;
   /** Agent harness; absent on reads of pre-harness rows is impossible (column default). */
   harness?: HarnessId;
+  /** Build (write) or plan (read-only); column default covers pre-feature rows. */
+  executionMode?: ExecutionMode;
   model: string;
   reasoningEffort: string | null;
   baseBranch: string | null;
@@ -117,6 +124,7 @@ interface SessionRow {
   repo_owner: string | null;
   repo_name: string | null;
   harness: HarnessId;
+  execution_mode: string;
   model: string;
   reasoning_effort: string | null;
   base_branch: string | null;
@@ -172,6 +180,7 @@ function toEntry(row: SessionRow): SessionEntry {
     repoOwner: row.repo_owner,
     repoName: row.repo_name,
     harness: getValidHarnessOrDefault(row.harness),
+    executionMode: getValidExecutionModeOrDefault(row.execution_mode),
     model: row.model,
     reasoningEffort: row.reasoning_effort,
     baseBranch: row.base_branch,
@@ -277,8 +286,8 @@ export class SessionIndexStore {
 
     const sessionStmt = this.db
       .prepare(
-        `INSERT INTO sessions (id, title, repo_owner, repo_name, harness, model, reasoning_effort, base_branch, status, parent_session_id, root_session_id, spawn_source, spawn_depth, automation_id, automation_run_id, scm_login, user_id, environment_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? IS NULL THEN ? ELSE (SELECT root_session_id FROM sessions WHERE id = ?) END, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO sessions (id, title, repo_owner, repo_name, harness, execution_mode, model, reasoning_effort, base_branch, status, parent_session_id, root_session_id, spawn_source, spawn_depth, automation_id, automation_run_id, scm_login, user_id, environment_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? IS NULL THEN ? ELSE (SELECT root_session_id FROM sessions WHERE id = ?) END, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         session.id,
@@ -286,6 +295,7 @@ export class SessionIndexStore {
         repository.repoOwner,
         repository.repoName,
         session.harness ?? DEFAULT_HARNESS,
+        session.executionMode ?? DEFAULT_EXECUTION_MODE,
         session.model,
         session.reasoningEffort,
         repository.baseBranch,

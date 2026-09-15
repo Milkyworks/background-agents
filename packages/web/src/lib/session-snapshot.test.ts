@@ -20,6 +20,7 @@ const snapshot = {
     messageCount: 1,
     createdAt: 1,
     harness: "opencode",
+    executionMode: "build",
   },
   artifacts: [],
   timeline: { events: [], hasMore: false, cursor: null },

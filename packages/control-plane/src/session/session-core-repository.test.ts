@@ -124,6 +124,7 @@ describe("SessionCoreRepository", () => {
         null,
         "main",
         "opencode",
+        "build",
         "claude-sonnet-4",
         null,
         "created",

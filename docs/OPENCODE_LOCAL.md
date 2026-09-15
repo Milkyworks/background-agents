@@ -43,6 +43,10 @@ opencode run "summarise the D1 schema"    # headless, prints to stdout
 opencode run --agent plan "how do sessions resume after a snapshot restore?"
 ```
 
+That `--agent plan` flag is the same plan mode the web composer offers per prompt (and per session
+at create): read-only planning without touching the repo. The in-app version additionally pins the
+mode per message and refuses to run it on sandbox images too old to enforce it.
+
 Credentials live outside the repo in `~/.local/share/opencode/auth.json`:
 
 ```bash

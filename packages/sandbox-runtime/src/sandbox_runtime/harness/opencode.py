@@ -104,9 +104,18 @@ class OpencodeHarness:
             model=prompt.model,
             reasoning_effort=prompt.reasoning_effort,
             attachments=list(prompt.attachments),
+            execution_mode=prompt.execution_mode,
         )
 
     async def run_prompt(self, prompt: HarnessPrompt, emit: EventSink) -> TurnOutcome:
+        # The startup probe runs before the turn (never as build): a
+        # silently-ignored `agent` field would let the agent write while the
+        # user believes nothing will be written.
+        if prompt.execution_mode == "plan" and not await self.client.plan_agent_available():
+            raise RuntimeError(
+                "OpenCode has no write-denied plan agent; refusing to run a plan "
+                "prompt that the server would execute with write access."
+            )
         error_message: str | None = None
         message_cost_usd: float | None = None
         try:

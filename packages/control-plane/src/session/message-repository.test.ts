@@ -178,6 +178,7 @@ describe("MessageRepository", () => {
       "web",
       "claude-sonnet-4",
       null,
+      null,
       "[]",
       '{"channel":"C123"}',
       null,

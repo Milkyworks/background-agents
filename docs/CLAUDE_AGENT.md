@@ -27,7 +27,10 @@ harness for the sessions they create. Bots and integrations create OpenCode sess
 
 The composer shows a harness menu beside the model picker; the model list is filtered to what the
 chosen harness can run. A per-message model override that the session's harness cannot run is
-rejected with an error rather than silently replaced.
+rejected with an error rather than silently replaced. The composer also shows a mode menu —
+**Build** (write access) or **Plan** (read-only) — available on both the new-session page and inside
+a session. On the Claude Agent harness, Plan runs in native plan mode with a read-only tool
+allowlist as a backstop, so toggling to Plan both plans and protects the repo.
 
 An **installation default** Anthropic account only takes effect on Claude Agent sessions. OpenCode,
 bot and automation sessions on OpenCode keep using the API key, so setting a default never breaks

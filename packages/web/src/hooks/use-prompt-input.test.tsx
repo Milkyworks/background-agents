@@ -46,6 +46,7 @@ function PromptHarness({
     mocks.sendTyping,
     "model-1",
     undefined,
+    "build",
     false,
     "active",
     canSubmit,
@@ -119,5 +120,13 @@ describe("usePromptInput", () => {
     fireEvent.keyDown(input, { key: "Enter", code: "Enter", shiftKey });
 
     expect(mocks.sendPrompt).toHaveBeenCalledOnce();
+    expect(mocks.sendPrompt).toHaveBeenCalledWith(
+      "Ship it",
+      "model-1",
+      undefined,
+      undefined,
+      expect.any(String),
+      "build"
+    );
   });
 });
