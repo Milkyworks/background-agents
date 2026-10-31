@@ -274,6 +274,8 @@ export async function handleSpawnChild(
     spawnDepth: childDepth,
     automationId: parentSession?.automationId ?? null,
     automationRunId: parentSession?.automationRunId ?? null,
+    // Children stay in their parent's project so they share its instructions.
+    projectId: parentSession?.projectId ?? null,
     managedSkillsSourceSessionId: parentId,
     providerAuth: providerAuth.map((auth) => ({
       ...auth,

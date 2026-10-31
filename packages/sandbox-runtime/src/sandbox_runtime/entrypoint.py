@@ -21,6 +21,7 @@ from .log_config import configure_logging, get_logger
 from .managed_skills import ManagedSkillsClient, ManagedSkillsMaterializer
 from .modal_image_build_start import MODAL_IMAGE_BUILD_START_ARGUMENT, run_modal_image_build
 from .opencode_server import OpenCodeServer, resolve_opencode_global_config_dir
+from .project_context import ProjectContextClient, ProjectContextMaterializer
 from .repository_boot import RepositoryBoot
 from .repository_hooks import RepositoryHooks
 from .repository_sync import RepositorySynchronizer
@@ -111,7 +112,16 @@ def build_supervisor(shutdown_event: asyncio.Event) -> SandboxSupervisor:
     claude_config_dir = claude_config_dir_for(config, repository_boot.repositories, log)
     managed_skills_config = config.managed_skills_config()
     managed_skills = None
+    project_context = None
     if managed_skills_config.control_plane_url and managed_skills_config.session_id:
+        project_context = ProjectContextMaterializer(
+            ProjectContextClient(
+                managed_skills_config.control_plane_url,
+                managed_skills_config.session_id,
+                managed_skills_config.sandbox_token,
+            ),
+            log,
+        )
         managed_skills = ManagedSkillsMaterializer(
             ManagedSkillsClient(
                 managed_skills_config.control_plane_url,
@@ -139,6 +149,7 @@ def build_supervisor(shutdown_event: asyncio.Event) -> SandboxSupervisor:
         managed_skills,
         shutdown_event,
         log,
+        project_context=project_context,
     )
 
 

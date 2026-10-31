@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from ..claude_stager import ClaudeHarnessHandoff
 from ..credentials.provider_credential_client import RuntimeCredentialClient
+from ..project_context import read_project_instructions
 from .base import (
     DEFAULT_HARNESS_ID,
     DETERMINISTIC_FAILURE_EXIT_CODE,
@@ -76,7 +77,7 @@ def build_agent_harness(
                 mcp_servers=_mcp_servers_from(session_config),
                 default_model=str(session_config.get("model") or "claude-sonnet-4-6"),
                 oauth_managed=oauth_managed,
-                system_prompt_append=_repository_guidance(handoff.workdir),
+                system_prompt_append=_system_prompt_append(handoff.workdir),
                 tools=ToolServerConfig(
                     control_plane_url=identity.control_plane_url,
                     session_id=identity.session_id,
@@ -123,6 +124,12 @@ def _mcp_servers_from(session_config: dict[str, object]) -> tuple[dict[str, obje
     if not isinstance(servers, list):
         return ()
     return tuple(server for server in servers if isinstance(server, dict))
+
+
+def _system_prompt_append(workdir: Path) -> str | None:
+    """Workspace guidance plus the project's standing instructions, when present."""
+    parts = [part for part in (_repository_guidance(workdir), read_project_instructions()) if part]
+    return "\n\n".join(parts) if parts else None
 
 
 def _repository_guidance(workdir: Path) -> str | None:

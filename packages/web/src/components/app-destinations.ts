@@ -1,4 +1,4 @@
-import { AutomationsIcon, DataControlsIcon, SettingsIcon } from "@/components/ui/icons";
+import { AutomationsIcon, DataControlsIcon, FolderIcon, SettingsIcon } from "@/components/ui/icons";
 import type { PermissionId } from "@open-inspect/shared/rbac";
 import type { ComponentType } from "react";
 
@@ -18,6 +18,13 @@ export const SETTINGS_DESTINATION = {
 } as const satisfies AppDestination;
 
 export const PRIMARY_APP_DESTINATIONS = [
+  {
+    label: "Projects",
+    description: "Group sessions with shared instructions and defaults",
+    href: "/projects",
+    icon: FolderIcon,
+    requiredPermission: "sessions.read",
+  },
   {
     label: "Automations",
     description: "Manage scheduled and event-triggered work",

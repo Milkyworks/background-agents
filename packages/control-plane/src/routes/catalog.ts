@@ -15,6 +15,7 @@ import { browserAuthRoutes } from "./browser-auth";
 import { commitSigningRoutes } from "./commit-signing";
 import { environmentSecretsRoutes } from "./environment-secrets";
 import { environmentRoutes } from "./environments";
+import { projectRoutes } from "./projects";
 import { healthRoutes } from "./health";
 import { imageBuildRoutes } from "./image-builds";
 import { integrationSettingsRoutes } from "./integration-settings";
@@ -52,6 +53,9 @@ export const catalog: readonly RouteModule[] = [
   // Environments (Phase-2 session target; internal-HMAC only, web BFF proxied)
   environmentRoutes,
   environmentSecretsRoutes,
+
+  // Projects: grouped sessions with standing instructions
+  projectRoutes,
 
   // Image builds (scope-generic)
   imageBuildRoutes,

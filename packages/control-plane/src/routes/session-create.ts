@@ -17,6 +17,7 @@ import {
 import { resolveEnvironmentTarget, resolveSessionRepositories } from "../repos/resolve";
 import { resolveScmProviderFromEnv } from "../source-control";
 import { EnvironmentStore } from "../db/environments";
+import { ProjectStore, parseProjectDefaultTarget } from "../db/projects";
 import { UserStore } from "../db/user-store";
 import { createLogger } from "../logger";
 import { parseCreateSessionInput } from "../session/create-session-input";
@@ -86,6 +87,22 @@ export async function handleCreateSession(
   const enforcement = applyIdentityEnforcement(ctx, "session-create", parsed.raw);
   if (enforcement.rejection) return enforcement.rejection;
   const enforced = enforcement.enforced;
+
+  // A project supplies the target and model when the request names none.
+  let projectId: string | null = null;
+  if (body.projectId) {
+    const project = await new ProjectStore(ctx.db).getById(body.projectId);
+    if (!project || project.archived_at !== null) return error("Project not found", 404);
+    projectId = project.id;
+    const hasTarget = Boolean(body.environmentId || body.repositories || body.repoOwner);
+    const defaultTarget = hasTarget ? null : parseProjectDefaultTarget(project.default_target_json);
+    if (defaultTarget && "environmentId" in defaultTarget) {
+      body.environmentId = defaultTarget.environmentId;
+    } else if (defaultTarget) {
+      body.repositories = defaultTarget.repositories;
+    }
+    if (!body.model && project.default_model) body.model = project.default_model;
+  }
 
   let repositoryContext: RepositoryPair | null;
   try {
@@ -268,6 +285,7 @@ export async function handleCreateSession(
     branch: body.branch,
     repositories,
     environmentId,
+    projectId,
     title: body.title,
     harness,
     model,

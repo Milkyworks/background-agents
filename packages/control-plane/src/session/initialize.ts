@@ -43,6 +43,8 @@ export interface SessionInitInput {
    * already snapshotted into `repositories`.
    */
   environmentId?: string | null;
+  /** The project this session belongs to; recorded in the D1 index. */
+  projectId?: string | null;
 
   // Session config
   title?: string;
@@ -156,6 +158,7 @@ export async function initializeSession(
     baseBranch,
     repositories,
     environmentId: input.environmentId ?? null,
+    projectId: input.projectId ?? null,
     status: "created",
     parentSessionId: input.parentSessionId,
     spawnSource: input.spawnSource,

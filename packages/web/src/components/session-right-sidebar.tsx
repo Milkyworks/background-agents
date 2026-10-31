@@ -26,6 +26,7 @@ import { deriveSessionDiffView } from "@/lib/session-diffs";
 import { DiffRetryNotice } from "@/components/diff-retry-notice";
 import { ManagedSkillsSection } from "./sidebar/managed-skills-section";
 import { BudgetSection } from "./sidebar/budget-section";
+import { ProjectSection } from "./sidebar/project-section";
 import type { SessionCapabilities } from "@/lib/session-capabilities";
 
 interface SessionRightSidebarProps {
@@ -133,6 +134,7 @@ export function SessionRightSidebarContent({
           parentSessionId={sessionState.parentSessionId}
           canManageLifecycle={capabilities.lifecycle}
         />
+        <ProjectSection sessionId={sessionId} canChange={capabilities.lifecycle} />
         <BudgetSection
           sessionId={sessionId}
           totalCost={sessionState.totalCost ?? 0}

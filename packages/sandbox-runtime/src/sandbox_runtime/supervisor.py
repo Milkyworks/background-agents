@@ -29,6 +29,7 @@ if TYPE_CHECKING:
     from .code_server import CodeServer
     from .harness.base import HarnessProcessOwner
     from .managed_skills import ManagedSkillsMaterializer
+    from .project_context import ProjectContextMaterializer
     from .repository_boot import RepositoryBoot, RepositoryBootResult
     from .web_terminal import WebTerminal
 
@@ -63,6 +64,7 @@ class SandboxSupervisor:
         managed_skills: ManagedSkillsMaterializer | None,
         shutdown_event: asyncio.Event,
         log: Any,
+        project_context: ProjectContextMaterializer | None = None,
     ) -> None:
         self.config = config
         self.repository_boot = repository_boot
@@ -74,6 +76,7 @@ class SandboxSupervisor:
         self.web_terminal = web_terminal
         self.browser_desktop = browser_desktop
         self.managed_skills = managed_skills
+        self.project_context = project_context
         self.shutdown_event = shutdown_event
         self.log = log
         self.boot_mode = BootMode.FRESH
@@ -447,6 +450,8 @@ class SandboxSupervisor:
             # reuse this tree and must not depend on control-plane availability.
             if self.managed_skills is not None:
                 await self.managed_skills.materialize(boot_result.repositories, boot_result.workdir)
+            if self.project_context is not None:
+                await self.project_context.materialize()
 
             try:
                 await self.code_server.start(boot_result.workdir)

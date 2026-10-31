@@ -247,6 +247,11 @@ const createSessionRequestBaseSchema = z.object({
    * fields.
    */
   environmentId: z.string().trim().min(1).nullish(),
+  /**
+   * Project the session belongs to. When no target is given, the project's
+   * default target (environment or repository list) is used.
+   */
+  projectId: z.string().trim().min(1).nullish(),
   /** Managed skills are resolved and pinned when the session is created. */
   skillSelection: sessionSkillSelectionSchema.optional(),
   /** Explicit account/API-key choices. Omission resolves provider policy. */
