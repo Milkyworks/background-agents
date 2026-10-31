@@ -74,6 +74,10 @@
       "import": "./dist/types/environments.js",
       "types": "./dist/types/environments.d.ts"
     },
+    "./types/projects": {
+      "import": "./dist/types/projects.js",
+      "types": "./dist/types/projects.d.ts"
+    },
     "./types/github-identity": {
       "import": "./dist/types/github-identity.js",
       "types": "./dist/types/github-identity.d.ts"

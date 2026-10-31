@@ -16,6 +16,8 @@ export type WarmDraftSessionRequest = SessionTargetRequestFields & {
   reasoningEffort?: string;
   skillSelection: SessionSkillSelection;
   providerSelections: ModelProviderSelections;
+  /** The project the new session joins, if any. */
+  projectId?: string;
 };
 
 export function warmDraftSessionIdentity(

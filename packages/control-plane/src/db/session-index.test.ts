@@ -27,6 +27,7 @@ type SessionRow = {
   message_count: number;
   pr_count: number;
   environment_id: string | null;
+  project_id: string | null;
   created_at: number;
   updated_at: number;
 };
@@ -212,6 +213,7 @@ class FakeD1Database {
         scmLogin,
         userId,
         environmentId,
+        projectId,
         createdAt,
         updatedAt,
       ] = args as [
@@ -230,6 +232,7 @@ class FakeD1Database {
         string | null,
         "user" | "agent" | "automation",
         number,
+        string | null,
         string | null,
         string | null,
         string | null,
@@ -267,6 +270,7 @@ class FakeD1Database {
           message_count: 0,
           pr_count: 0,
           environment_id: environmentId,
+          project_id: projectId,
           created_at: createdAt,
           updated_at: updatedAt,
         });
@@ -431,6 +435,11 @@ class FakeD1Database {
         argIdx += userIdCount;
         rows = rows.filter((r) => r.user_id !== null && userIds.has(r.user_id));
       }
+
+      if (conditions.includes("project_id = ?")) {
+        const projectId = args[argIdx++] as string;
+        rows = rows.filter((r) => r.project_id === projectId);
+      }
     }
 
     return rows;
@@ -510,7 +519,17 @@ describe("SessionIndexStore", () => {
         messageCount: 0,
         prCount: 0,
         environmentId: null,
+        projectId: null,
       });
+    });
+
+    it("stores and filters by projectId", async () => {
+      await store.create(makeSession({ id: "in-project", projectId: "proj_a" }));
+      await store.create(makeSession({ id: "standalone" }));
+
+      expect((await store.get("in-project"))?.projectId).toBe("proj_a");
+      const result = await store.list({ projectId: "proj_a" });
+      expect(result.sessions.map((s) => s.id)).toEqual(["in-project"]);
     });
 
     it("trims and lowercases repoOwner and repoName", async () => {

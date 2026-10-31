@@ -16,6 +16,7 @@ from .constants import OPENCODE_PORT
 from .git_excludes import install_runtime_git_excludes
 from .mcp_packages import McpPackageInstaller
 from .process_output import iter_process_lines
+from .project_context import PROJECT_INSTRUCTIONS_PATH
 from .sandbox_bin import install_bin_scripts
 
 if TYPE_CHECKING:
@@ -413,6 +414,11 @@ class OpenCodeServer:
                 }
             },
         }
+
+        # Project standing instructions live outside every checkout; OpenCode
+        # reads them as an extra instructions file.
+        if PROJECT_INSTRUCTIONS_PATH.is_file():
+            opencode_config["instructions"] = [str(PROJECT_INSTRUCTIONS_PATH)]
 
         # Inject MCP servers
         mcp_servers = self._resolve_mcp_servers()

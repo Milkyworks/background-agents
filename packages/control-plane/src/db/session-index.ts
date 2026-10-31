@@ -97,6 +97,8 @@ export interface SessionEntry {
    * repo-launched/ad-hoc sessions. PR-12 renders it on the session list.
    */
   environmentId?: string | null;
+  /** The project this session belongs to, or null. */
+  projectId?: string | null;
   /**
    * Per-status PR counts from session_pull_requests; absent when the session
    * has no tracked PRs. Attached by list() for the global sidebar.
@@ -134,6 +136,7 @@ interface SessionRow {
   message_count: number;
   pr_count: number;
   environment_id: string | null;
+  project_id?: string | null;
   created_at: number;
   updated_at: number;
 }
@@ -152,6 +155,8 @@ export interface ListSessionsOptions {
   excludeStatus?: SessionStatus;
   excludeAutomationLineage?: boolean;
   createdByUserIds?: readonly string[];
+  /** Only sessions in this project. */
+  projectId?: string;
   limit?: number;
   offset?: number;
   viewerUserId?: string;
@@ -188,6 +193,7 @@ function toEntry(row: SessionRow): SessionEntry {
     messageCount: row.message_count,
     prCount: row.pr_count,
     environmentId: row.environment_id,
+    projectId: row.project_id ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -277,8 +283,8 @@ export class SessionIndexStore {
 
     const sessionStmt = this.db
       .prepare(
-        `INSERT INTO sessions (id, title, repo_owner, repo_name, harness, model, reasoning_effort, base_branch, status, parent_session_id, root_session_id, spawn_source, spawn_depth, automation_id, automation_run_id, scm_login, user_id, environment_id, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? IS NULL THEN ? ELSE (SELECT root_session_id FROM sessions WHERE id = ?) END, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        `INSERT INTO sessions (id, title, repo_owner, repo_name, harness, model, reasoning_effort, base_branch, status, parent_session_id, root_session_id, spawn_source, spawn_depth, automation_id, automation_run_id, scm_login, user_id, environment_id, project_id, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? IS NULL THEN ? ELSE (SELECT root_session_id FROM sessions WHERE id = ?) END, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         session.id,
@@ -301,6 +307,7 @@ export class SessionIndexStore {
         session.scmLogin ?? null,
         session.userId ?? null,
         session.environmentId ?? null,
+        session.projectId ?? null,
         session.createdAt,
         session.updatedAt
       );
@@ -527,6 +534,7 @@ export class SessionIndexStore {
       excludeStatus,
       excludeAutomationLineage,
       createdByUserIds,
+      projectId,
       limit = DEFAULT_SESSION_LIST_LIMIT,
       offset = DEFAULT_SESSION_LIST_OFFSET,
       viewerUserId,
@@ -556,6 +564,10 @@ export class SessionIndexStore {
     if (createdByUserIds?.length) {
       conditions.push(`user_id IN (${createdByUserIds.map(() => "?").join(", ")})`);
       params.push(...createdByUserIds);
+    }
+    if (projectId) {
+      conditions.push("project_id = ?");
+      params.push(projectId);
     }
     const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 

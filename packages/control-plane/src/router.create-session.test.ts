@@ -16,10 +16,16 @@ import { resolveManagedSkills } from "./session/skill-resolution";
 import { resolveSessionProviderAuth } from "./session/provider-account-resolution";
 import { ProviderAccountSelectionPolicyError } from "./model-provider-accounts/selection-policy";
 import { resolveEnvironmentTarget, resolveSessionRepositories } from "./repos/resolve";
+import { ProjectStore, type ProjectRow } from "./db/projects";
 
 vi.mock("./db/session-index", () => ({
   SessionIndexStore: vi.fn(),
 }));
+
+vi.mock("./db/projects", async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>;
+  return { ...actual, ProjectStore: vi.fn() };
+});
 
 vi.mock("./db/user-store", () => ({
   UserStore: vi.fn(),
@@ -346,6 +352,88 @@ describe("handleCreateSession D1 ordering", () => {
       })
     );
     expect(initFetch).toHaveBeenCalledOnce();
+  });
+
+  function mockProject(row: Partial<ProjectRow> | null): void {
+    const project: ProjectRow | null = row
+      ? {
+          id: "proj_1",
+          name: "Project",
+          instructions: "",
+          default_target_json: null,
+          default_model: null,
+          created_by: "user-1",
+          created_at: 1,
+          updated_at: 1,
+          archived_at: null,
+          ...row,
+        }
+      : null;
+    vi.mocked(ProjectStore).mockImplementation(function () {
+      return { getById: vi.fn(async () => project) } as never;
+    });
+  }
+
+  it("uses the project's default target and records the project", async () => {
+    const create = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(SessionIndexStore).mockImplementation(function () {
+      return { create } as never;
+    });
+    mockProject({ default_target_json: JSON.stringify({ environmentId: "env_project" }) });
+    const initFetch = vi.fn(async () => Response.json({ status: "created" }));
+
+    const response = await createSessionRequestWithBody(
+      createEnv(initFetch, ["sessions.create", "environments.use"]),
+      { title: "In project", projectId: "proj_1" }
+    );
+
+    expect(response.status).toBe(201);
+    expect(resolveEnvironmentTarget).toHaveBeenCalledWith(expect.anything(), "env_project");
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: "proj_1", environmentId: "env_project" })
+    );
+  });
+
+  it("keeps an explicit target over the project's default", async () => {
+    const create = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(SessionIndexStore).mockImplementation(function () {
+      return { create } as never;
+    });
+    mockProject({ default_target_json: JSON.stringify({ environmentId: "env_project" }) });
+    const initFetch = vi.fn(async () => Response.json({ status: "created" }));
+
+    const response = await createSessionRequestWithBody(createEnv(initFetch), {
+      title: "Explicit",
+      projectId: "proj_1",
+      repoOwner: "acme",
+      repoName: "widgets",
+    });
+
+    expect(response.status).toBe(201);
+    expect(resolveEnvironmentTarget).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: "proj_1", repoName: "widgets" })
+    );
+  });
+
+  it.each([
+    ["missing", null],
+    ["archived", { archived_at: 5 }],
+  ])("rejects a %s project", async (_label, row) => {
+    const create = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(SessionIndexStore).mockImplementation(function () {
+      return { create } as never;
+    });
+    mockProject(row);
+    const initFetch = vi.fn(async () => Response.json({ status: "created" }));
+
+    const response = await createSessionRequestWithBody(createEnv(initFetch), {
+      title: "Nope",
+      projectId: "proj_1",
+    });
+
+    expect(response.status).toBe(404);
+    expect(create).not.toHaveBeenCalled();
   });
 
   it("rejects whitespace-only repository fields as invalid before resolving the repo", async () => {

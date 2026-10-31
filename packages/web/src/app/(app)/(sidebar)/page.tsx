@@ -45,7 +45,7 @@ import {
 } from "@/hooks/use-session-target-picker";
 import { SessionTargetPicker } from "@/components/session-target-picker";
 import { ModelReasoningSelector } from "@/components/model-reasoning-selector";
-import { PaperclipIcon, SendIcon } from "@/components/ui/icons";
+import { FolderIcon, PaperclipIcon, SendIcon, XIcon } from "@/components/ui/icons";
 import { SessionSkillSelector } from "@/components/session-skill-selector";
 import { PromptSkillTextarea } from "@/components/prompt-skill-autocomplete";
 import type { SessionSkillSelection } from "@open-inspect/shared/types/skills";
@@ -63,6 +63,7 @@ import type {
 } from "@open-inspect/shared/types/provider-accounts";
 import { ProviderAuthControls } from "@/components/provider-auth-controls";
 import { useProviderAccounts } from "@/hooks/use-provider-accounts";
+import { useLaunchProject } from "@/hooks/use-launch-project";
 import { useWarmDraftSession, type WarmDraftSessionRequest } from "@/hooks/use-warm-draft-session";
 import { useCurrentUserAuthorization } from "@/hooks/use-current-user-authorization";
 import {
@@ -103,6 +104,7 @@ export default function Home() {
   const router = useRouter();
   const picker = useSessionTargetPicker();
   const { sessionTarget, buildRequestFields, isLaunchable } = picker;
+  const launchProject = useLaunchProject(picker);
   const [storedPreference, setStoredPreference] = useState<ModelPreference>({
     model: DEFAULT_MODEL,
     reasoningEffort: getDefaultReasoningEffort(DEFAULT_MODEL),
@@ -234,6 +236,7 @@ export default function Home() {
           reasoningEffort,
           skillSelection,
           providerSelections: availableProviderSelections,
+          ...(launchProject.project ? { projectId: launchProject.project.id } : {}),
         }
       : null;
   const warmRoutingIdentity = buildInteractiveProviderRoutingIdentity(
@@ -394,6 +397,7 @@ export default function Home() {
       isAuthenticated={!!session}
       canCreateSession={canCreateSession}
       picker={picker}
+      launchProject={launchProject}
       selectedModel={selectedModel}
       setSelectedModel={handleModelChange}
       reasoningEffort={reasoningEffort}
@@ -432,6 +436,7 @@ function HomeContent({
   isAuthenticated,
   canCreateSession,
   picker,
+  launchProject,
   selectedModel,
   setSelectedModel,
   reasoningEffort,
@@ -460,6 +465,7 @@ function HomeContent({
   isAuthenticated: boolean;
   canCreateSession: boolean;
   picker: SessionTargetSelection;
+  launchProject: ReturnType<typeof useLaunchProject>;
   selectedModel: ValidModel;
   setSelectedModel: (value: ValidModel) => void;
   reasoningEffort: ReasoningEffort | undefined;
@@ -555,6 +561,29 @@ function HomeContent({
 
               <div className="mb-3 flex flex-wrap items-center gap-2 px-4 sm:gap-4">
                 <SessionTargetPicker {...picker.pickerProps} disabled={creating} />
+                {launchProject.project && (
+                  <span className="flex items-center gap-1 text-sm text-muted-foreground">
+                    <FolderIcon className="h-4 w-4" />
+                    <span>
+                      In project{" "}
+                      <Link
+                        href={`/projects/${launchProject.project.id}`}
+                        className="text-foreground hover:underline"
+                      >
+                        {launchProject.project.name}
+                      </Link>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={launchProject.clear}
+                      disabled={creating}
+                      aria-label="Start outside the project"
+                      className="p-0.5 hover:text-foreground"
+                    >
+                      <XIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </span>
+                )}
               </div>
 
               <div
